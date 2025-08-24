@@ -189,8 +189,11 @@ def get_positions(trader_index):
                     market_value = volume * avg_price
                 
                 # 计算盈亏和盈亏比例
-                current_price = qmt_data.get_last_price(symbol)  # 获取实时价格
-
+                try:
+                    current_price = qmt_data.get_last_price(symbol)  # 获取实时价格
+                except:
+                    current_price = avg_price
+                    
                 cost_value = volume * avg_price if avg_price > 0 else 0
                 current_value = volume * current_price if current_price > 0 else market_value
                 profit = current_value - cost_value if cost_value > 0 else 0
