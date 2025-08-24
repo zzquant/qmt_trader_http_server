@@ -688,7 +688,11 @@
             if (!showAmounts) {
                 // 隐藏模式：根据数字大小显示不同数量的星号
                 const absNumber = Math.abs(number);
-                return '*****';
+                if (absNumber >= 100000) return '*****';
+                if (absNumber >= 10000) return '****';
+                if (absNumber >= 1000) return '***';
+                if (absNumber >= 100) return '**';
+                return '*';
             }
             
             return number.toLocaleString('zh-CN');
@@ -703,7 +707,10 @@
                 const absAmount = Math.abs(amount);
                 if (absAmount >= 1000000) return '******';
                 if (absAmount >= 100000) return '*****';
-                return '*****';
+                if (absAmount >= 10000) return '****';
+                if (absAmount >= 1000) return '***';
+                if (absAmount >= 100) return '**';
+                return '*';
             }
             
             return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -716,7 +723,9 @@
             if (!showAmounts) {
                 // 隐藏模式：根据百分比大小显示不同数量的星号
                 const absPercentage = Math.abs(percentage);
-                return '***%';
+                if (absAmount >= 50) return '***';
+                if (absAmount >= 10) return '**';
+                return '*%';
             }
             
             return percentage.toFixed(2) + '%';
