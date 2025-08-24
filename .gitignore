@@ -1,0 +1,106 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+dao/*.db
+
+# IDE和编辑器
+/.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PYTHON*
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# 日志文件
+logs/
+*.log
+
+# 配置文件
+/config.toml
+/config/config.json
+
+# 数据存储
+/storage/
+/dao/*.db
+*.sqlite
+*.sqlite3
+
+# 缓存
+.cache/
+.pytest_cache/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VuePress
+/sites/docs/.vuepress/.temp
+/sites/docs/.vuepress/.cache
+/sites/docs/.vuepress/dist
+
+# 模型文件
+/models/
+*.pkl
+*.model
+
+# 临时文件
+*.tmp
+*.temp
+.streamlit/
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# 其他
+.DS_Store?
+.Spotlight-V100
+.Trashes
+ehthumbs.db

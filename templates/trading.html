@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易界面</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
+    <style>
+        .position-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .position-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #f8f9fa;
+        }
+        .btn-position {
+            margin: 2px;
+            min-width: 60px;
+        }
+        .profit-positive {
+            color: #dc3545;
+        }
+        .profit-negative {
+            color: #198754;
+        }
+        .trading-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card-header {
+            background: rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .portfolio-summary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .portfolio-item {
+            text-align: center;
+            padding: 10px;
+        }
+        .portfolio-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .sortable {
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        .sortable:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        .sortable i {
+            margin-left: 5px;
+            font-size: 0.8em;
+            opacity: 0.6;
+        }
+        .sortable:hover i {
+            opacity: 1;
+        }
+        .portfolio-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        /* 修复交易面板选项卡样式 */
+        .trading-panel .nav-tabs .nav-link {
+            color: rgba(255,255,255,0.8) !important;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        .trading-panel .nav-tabs .nav-link:hover {
+            color: white !important;
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .trading-panel .nav-tabs .nav-link.active {
+            color: #333 !important;
+            background: white !important;
+            border-color: rgba(255,255,255,0.5);
+            font-weight: 500;
+        }
+        .account-tabs .nav-link {
+            border-radius: 10px 10px 0 0;
+        }
+        .position-table th {
+            font-size: 0.9em;
+            background-color: #f8f9fa;
+        }
+        .position-table td {
+            font-size: 0.9em;
+            vertical-align: middle;
+        }
+        
+        /* 金额显示开关样式 */
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .form-check-label {
+            font-size: 0.9em;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .navbar .form-check {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+        }
+        
+        .navbar .form-check-input {
+            margin-top: 0;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-graph-up me-2"></i>
+                QMT交易系统
+            </span>
+            <div class="navbar-nav ms-auto">
+                <!-- 金额显示开关 -->
+                <div class="form-check form-switch me-3">
+                    <input class="form-check-input" type="checkbox" id="amountDisplaySwitch" checked onchange="toggleAmountDisplay()">
+                    <label class="form-check-label text-white" for="amountDisplaySwitch">
+                        <i class="bi bi-eye me-1"></i>显示金额
+                    </label>
+                </div>
+                
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1"></i>
+                        {{ session.username if session.username else '用户' }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">账户管理</h6></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="bi bi-person me-2"></i>个人信息
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="/logout">
+                            <i class="bi bi-box-arrow-right me-2"></i>退出登录
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container-fluid py-4">
+        <!-- 账号选择标签 -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <ul class="nav nav-tabs account-tabs" id="accountTabs" role="tablist">
+                    <!-- 动态生成账号标签 -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- 账号内容区域 -->
+        <div class="tab-content" id="accountTabsContent">
+            <!-- 动态生成账号内容 -->
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto">交易通知</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        let accounts = [];
+        let currentAccountIndex = 0;
+        let toast = new bootstrap.Toast(document.getElementById('toast'));
+        let showAmounts = true; // 控制金额显示状态
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAccounts();
+        });
+
+        // 加载账户列表
+        function loadAccounts() {
+            fetch('/qmt/trade/api/accounts')
+                .then(response => response.json())
+                .then(data => {
+                    accounts = data.accounts || [];
+                    createAccountTabs();
+                    if (accounts.length > 0) {
+                        switchAccount(0);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取账户列表失败:', error);
+                    showToast('获取账户列表失败', 'error');
+                });
+        }
+
+        // 创建账户标签
+        function createAccountTabs() {
+            const tabsContainer = document.getElementById('accountTabs');
+            const contentContainer = document.getElementById('accountTabsContent');
+            
+            tabsContainer.innerHTML = '';
+            contentContainer.innerHTML = '';
+            
+            accounts.forEach((account, index) => {
+                // 创建标签
+                const tabItem = document.createElement('li');
+                tabItem.className = 'nav-item';
+                tabItem.innerHTML = `
+                    <button class="nav-link ${index === 0 ? 'active' : ''}" 
+                            id="account-tab-${index}" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#account-content-${index}" 
+                            type="button" 
+                            role="tab"
+                            onclick="switchAccount(${index})">
+                        ${account.nick_name}
+                    </button>
+                `;
+                tabsContainer.appendChild(tabItem);
+                
+                // 创建内容区域
+                const contentItem = document.createElement('div');
+                contentItem.className = `tab-pane fade ${index === 0 ? 'show active' : ''}`;
+                contentItem.id = `account-content-${index}`;
+                contentItem.innerHTML = createAccountContent(index);
+                contentContainer.appendChild(contentItem);
+            });
+        }
+
+        // 创建账户内容
+        function createAccountContent(accountIndex) {
+            return `
+                <!-- 账户总体情况 -->
+                <div class="portfolio-summary p-3 mb-3">
+                    <div class="row" id="portfolio-${accountIndex}">
+                        <div class="col-md-2 portfolio-item">
+                            <div class="portfolio-value" id="total-asset-${accountIndex}">--</div>
+                            <div class="portfolio-label">总资产</div>
+                        </div>
+                        <div class="col-md-2 portfolio-item">
+                            <div class="portfolio-value" id="cash-${accountIndex}">--</div>
+                            <div class="portfolio-label">可用金额</div>
+                        </div>
+                        <div class="col-md-2 portfolio-item">
+                            <div class="portfolio-value" id="frozen-cash-${accountIndex}">--</div>
+                            <div class="portfolio-label">冻结金额</div>
+                        </div>
+                        <div class="col-md-2 portfolio-item">
+                            <div class="portfolio-value" id="market-value-${accountIndex}">--</div>
+                            <div class="portfolio-label">总市值</div>
+                        </div>
+                        <div class="col-md-2 portfolio-item">
+                            <div class="portfolio-value" id="profit-${accountIndex}">--</div>
+                            <div class="portfolio-label">盈亏</div>
+                        </div>
+                        <div class="col-md-2 portfolio-item">
+                            <div class="portfolio-value" id="profit-ratio-${accountIndex}">--</div>
+                            <div class="portfolio-label">盈亏比例</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- 持仓信息 -->
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-wallet2"></i> 持仓信息</h5>
+                                <button class="btn btn-outline-primary btn-sm" onclick="refreshAccountData(${accountIndex})">
+                                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover position-table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>证券代码</th>
+                                                <th>证券名称</th>
+                                                <th>当前持股</th>
+                                                <th>可用股数</th>
+                                                <th>冻结数量</th>
+                                                <th class="sortable" onclick="sortTable(${accountIndex}, 5, 'number')" style="cursor: pointer;">市值 <i class="bi bi-arrow-down-up"></i></th>
+                                                <th>最新价</th>
+                                                <th>成本价</th>
+                                                <th class="sortable" onclick="sortTable(${accountIndex}, 8, 'number')" style="cursor: pointer;">盈亏 <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="sortable" onclick="sortTable(${accountIndex}, 9, 'number')" style="cursor: pointer;">盈亏比例 <i class="bi bi-arrow-down-up"></i></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="positions-table-${accountIndex}">
+                                            <tr>
+                                                <td colspan="10" class="text-center py-4">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="visually-hidden">加载中...</span>
+                                                    </div>
+                                                    <p class="mt-2 mb-0">正在加载持仓信息...</p>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 交易操作 -->
+                    <div class="col-md-4">
+                        <div class="card trading-panel">
+                            <div class="card-header">
+                                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active text-white" id="buy-tab-${accountIndex}" data-bs-toggle="tab" data-bs-target="#buy-panel-${accountIndex}" type="button" role="tab">
+                                            <i class="bi bi-plus-circle"></i> 买入
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link text-white" id="sell-tab-${accountIndex}" data-bs-toggle="tab" data-bs-target="#sell-panel-${accountIndex}" type="button" role="tab">
+                                            <i class="bi bi-dash-circle"></i> 卖出
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body">
+                                <div class="tab-content">
+                                    <!-- 买入面板 -->
+                                    <div class="tab-pane fade show active" id="buy-panel-${accountIndex}" role="tabpanel">
+                                        <form id="buyForm-${accountIndex}" onsubmit="submitBuyOrder(event, ${accountIndex})">
+                                            <div class="mb-3">
+                                                <label class="form-label">股票代码</label>
+                                                <input type="text" class="form-control" id="buySymbol-${accountIndex}" placeholder="例如: 000001.SZ" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">买入价格</label>
+                                                <input type="number" class="form-control" id="buyPrice-${accountIndex}" step="0.01" placeholder="0.00" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">仓位选择</label>
+                                                <div class="d-flex flex-wrap">
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setPosition(${accountIndex}, 1)">满仓</button>
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setPosition(${accountIndex}, 0.5)">1/2</button>
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setPosition(${accountIndex}, 0.33)">1/3</button>
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setPosition(${accountIndex}, 0.25)">1/4</button>
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setPosition(${accountIndex}, 0.1)">1/10</button>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">仓位比例</label>
+                                                <input type="number" class="form-control" id="buyPosition-${accountIndex}" step="0.01" min="0" max="1" value="0.1" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-light w-100">
+                                                <i class="bi bi-cart-plus"></i> 买入
+                                            </button>
+                                        </form>
+                                    </div>
+                                    
+                                    <!-- 卖出面板 -->
+                                    <div class="tab-pane fade" id="sell-panel-${accountIndex}" role="tabpanel">
+                                        <form id="sellForm-${accountIndex}" onsubmit="submitSellOrder(event, ${accountIndex})">
+                                            <div class="mb-3">
+                                                <label class="form-label">选择持仓</label>
+                                                <select class="form-select" id="sellSymbol-${accountIndex}" onchange="updateSellShares(${accountIndex})" required>
+                                                    <option value="">请选择要卖出的股票</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">卖出价格</label>
+                                                <input type="number" class="form-control" id="sellPrice-${accountIndex}" step="0.01" placeholder="0.00" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">卖出比例</label>
+                                                <div class="d-flex flex-wrap">
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setSellRatio(${accountIndex}, 1)">全部</button>
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setSellRatio(${accountIndex}, 0.5)">1/2</button>
+                                                    <button type="button" class="btn btn-outline-light btn-position" onclick="setSellRatio(${accountIndex}, 0.25)">1/4</button>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">卖出比例</label>
+                                                <input type="number" class="form-control" id="sellRatio-${accountIndex}" step="0.01" min="0" max="1" value="1" oninput="updateSellShares(${accountIndex})" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">卖出股数</label>
+                                                <input type="number" class="form-control" id="sellShares-${accountIndex}" readonly>
+                                            </div>
+                                            <button type="submit" class="btn btn-light w-100">
+                                                <i class="bi bi-cart-dash"></i> 卖出
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 切换账户
+        function switchAccount(accountIndex) {
+            currentAccountIndex = accountIndex;
+            refreshAccountData(accountIndex);
+        }
+
+        // 刷新账户数据
+        function refreshAccountData(accountIndex) {
+            loadPortfolio(accountIndex);
+            loadPositions(accountIndex);
+        }
+
+        // 加载资产信息
+        function loadPortfolio(accountIndex) {
+            fetch(`/qmt/trade/api/portfolio/${accountIndex}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.portfolio) {
+                        updatePortfolioDisplay(accountIndex, data.portfolio);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取资产信息失败:', error);
+                });
+        }
+
+        // 更新资产显示
+        function updatePortfolioDisplay(accountIndex, portfolio) {
+            document.getElementById(`total-asset-${accountIndex}`).textContent = formatMoney(portfolio.total_asset);
+            document.getElementById(`cash-${accountIndex}`).textContent = formatMoney(portfolio.cash);
+            document.getElementById(`frozen-cash-${accountIndex}`).textContent = formatMoney(portfolio.frozen_cash);
+            document.getElementById(`market-value-${accountIndex}`).textContent = formatMoney(portfolio.market_value);
+            
+            // 盈亏显示现在由持仓数据计算，不再从portfolio中获取
+        }
+
+        // 加载持仓信息
+        function loadPositions(accountIndex) {
+            fetch(`/qmt/trade/api/positions/${accountIndex}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.positions) {
+                        updatePositionsDisplay(accountIndex, data.positions);
+                        updateSellOptions(accountIndex, data.positions);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取持仓信息失败:', error);
+                    showToast('获取持仓信息失败', 'error');
+                });
+        }
+
+        // 更新持仓显示
+        function updatePositionsDisplay(accountIndex, positions) {
+            const tableBody = document.getElementById(`positions-table-${accountIndex}`);
+            
+            if (positions.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="10" class="text-center py-4">暂无持仓</td></tr>';
+                // 清空盈亏显示
+                updateProfitDisplay(accountIndex, 0, 0);
+                return;
+            }
+            
+            let totalProfit = 0;
+            let totalCost = 0;
+            
+            const html = positions.map(pos => {
+                const profit = pos.current_price > 0 ? (pos.current_price - pos.avg_price) * pos.volume : 0;
+                const profitRatio = pos.avg_price > 0 ? ((pos.current_price - pos.avg_price) / pos.avg_price * 100) : 0;
+                const profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
+                
+                // 累计总盈亏
+                totalProfit += profit;
+                totalCost += pos.avg_price * pos.volume;
+                
+                return `
+                    <tr class="position-row" onclick="selectStock('${pos.symbol}', ${pos.current_price || pos.avg_price})" style="cursor: pointer;">
+                        <td>${pos.symbol}</td>
+                        <td>${pos.name}</td>
+                        <td>${showAmounts ? pos.volume : formatNumber(pos.volume)}</td>
+                        <td>${showAmounts ? pos.can_use_volume : formatNumber(pos.can_use_volume)}</td>
+                        <td>${showAmounts ? pos.frozen_volume : formatNumber(pos.frozen_volume)}</td>
+                        <td>¥${formatMoney(pos.market_value)}</td>
+                        <td>¥${showAmounts ? (pos.current_price || 0).toFixed(2) : formatMoney(pos.current_price || 0).replace('¥', '')}</td>
+                        <td>¥${showAmounts ? (pos.avg_price || 0).toFixed(2) : formatMoney(pos.avg_price || 0).replace('¥', '')}</td>
+                        <td class="${profitClass}">¥${showAmounts ? profit.toFixed(2) : formatMoney(profit).replace('¥', '')}</td>
+                        <td class="${profitClass}">${showAmounts ? profitRatio.toFixed(2) + '%' : (profitRatio >= 0 ? '+' : '-') + formatMoney(Math.abs(profitRatio)).replace('¥', '') + '%'}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tableBody.innerHTML = html;
+            
+            // 计算总盈亏比例
+            const totalProfitRatio = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
+            
+            // 更新顶部盈亏显示
+            updateProfitDisplay(accountIndex, totalProfit, totalProfitRatio);
+        }
+        
+        // 更新盈亏显示
+        function updateProfitDisplay(accountIndex, profit, profitRatio) {
+            const profitElement = document.getElementById(`profit-${accountIndex}`);
+            const profitRatioElement = document.getElementById(`profit-ratio-${accountIndex}`);
+            
+            if (profitElement && profitRatioElement) {
+                profitElement.textContent = formatMoney(profit);
+                profitRatioElement.textContent = profitRatio.toFixed(2) + '%';
+                
+                // 设置盈亏颜色
+                const profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
+                profitElement.className = `portfolio-value ${profitClass}`;
+                profitRatioElement.className = `portfolio-value ${profitClass}`;
+            }
+        }
+
+        // 更新卖出选项
+        function updateSellOptions(accountIndex, positions) {
+            const sellSelect = document.getElementById(`sellSymbol-${accountIndex}`);
+            sellSelect.innerHTML = '<option value="">请选择要卖出的股票</option>';
+            
+            positions.forEach(pos => {
+                const option = document.createElement('option');
+                option.value = pos.symbol;
+                option.textContent = `${pos.symbol} (${pos.can_use_volume}股)`;
+                option.dataset.shares = pos.can_use_volume;
+                option.dataset.price = pos.current_price || pos.avg_price;
+                sellSelect.appendChild(option);
+            });
+        }
+
+        // 选择股票（点击持仓行）
+        function selectStock(symbol, price) {
+            // 填入买入表单
+            document.getElementById(`buySymbol-${currentAccountIndex}`).value = symbol;
+            document.getElementById(`buyPrice-${currentAccountIndex}`).value = price.toFixed(2);
+            
+            // 填入卖出表单
+            const sellSelect = document.getElementById(`sellSymbol-${currentAccountIndex}`);
+            sellSelect.value = symbol;
+            document.getElementById(`sellPrice-${currentAccountIndex}`).value = price.toFixed(2);
+            updateSellShares(currentAccountIndex);
+            
+            showToast(`已选择股票 ${symbol}，价格 ¥${price.toFixed(2)}`, 'success');
+        }
+
+        // 设置买入仓位
+        function setPosition(accountIndex, ratio) {
+            document.getElementById(`buyPosition-${accountIndex}`).value = ratio;
+        }
+
+        // 设置卖出比例
+        function setSellRatio(accountIndex, ratio) {
+            document.getElementById(`sellRatio-${accountIndex}`).value = ratio;
+            updateSellShares(accountIndex);
+        }
+
+        // 更新卖出股数
+        function updateSellShares(accountIndex) {
+            const sellSelect = document.getElementById(`sellSymbol-${accountIndex}`);
+            const sellRatio = parseFloat(document.getElementById(`sellRatio-${accountIndex}`).value) || 0;
+            const selectedOption = sellSelect.selectedOptions[0];
+            
+            if (selectedOption && selectedOption.dataset.shares) {
+                const totalShares = parseInt(selectedOption.dataset.shares);
+                const sellShares = Math.floor(totalShares * sellRatio);
+                document.getElementById(`sellShares-${accountIndex}`).value = sellShares;
+                
+                // 自动填入价格
+                if (selectedOption.dataset.price) {
+                    document.getElementById(`sellPrice-${accountIndex}`).value = parseFloat(selectedOption.dataset.price).toFixed(2);
+                }
+            } else {
+                document.getElementById(`sellShares-${accountIndex}`).value = '';
+            }
+        }
+
+        // 提交买入订单
+        function submitBuyOrder(event, accountIndex) {
+            event.preventDefault();
+            const formData = {
+                symbol: document.getElementById(`buySymbol-${accountIndex}`).value,
+                trade_price: parseFloat(document.getElementById(`buyPrice-${accountIndex}`).value),
+                position_pct: parseFloat(document.getElementById(`buyPosition-${accountIndex}`).value)
+            };
+
+            fetch('/qmt/trade/api/trade', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('买入订单已提交', 'success');
+                    refreshAccountData(accountIndex);
+                    document.getElementById(`buyForm-${accountIndex}`).reset();
+                }
+            })
+            .catch(error => {
+                console.error('买入失败:', error);
+                showToast('买入失败', 'error');
+            });
+        }
+
+        // 提交卖出订单
+        function submitSellOrder(event, accountIndex) {
+            event.preventDefault();
+            const formData = {
+                symbol: document.getElementById(`sellSymbol-${accountIndex}`).value,
+                price: parseFloat(document.getElementById(`sellPrice-${accountIndex}`).value),
+                shares: parseInt(document.getElementById(`sellShares-${accountIndex}`).value)
+            };
+
+            fetch('/qmt/trade/api/sell', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    showToast('卖出订单已提交', 'success');
+                    refreshAccountData(accountIndex);
+                    document.getElementById(`sellForm-${accountIndex}`).reset();
+                }
+            })
+            .catch(error => {
+                console.error('卖出失败:', error);
+                showToast('卖出失败', 'error');
+            });
+        }
+
+        // 切换金额显示模式
+        function toggleAmountDisplay() {
+            const switchElement = document.getElementById('amountDisplaySwitch');
+            const labelElement = switchElement.nextElementSibling;
+            const iconElement = labelElement.querySelector('i');
+            
+            showAmounts = switchElement.checked;
+            
+            if (showAmounts) {
+                iconElement.className = 'bi bi-eye me-1';
+                labelElement.innerHTML = '<i class="bi bi-eye me-1"></i>显示金额';
+            } else {
+                iconElement.className = 'bi bi-eye-slash me-1';
+                labelElement.innerHTML = '<i class="bi bi-eye-slash me-1"></i>隐藏金额';
+            }
+            
+            // 刷新当前账户数据以更新显示
+            if (accounts.length > 0) {
+                refreshAccountData(currentAccountIndex);
+            }
+        }
+
+        // 格式化数字（用于股数等非金额数字）
+        function formatNumber(number) {
+            if (number === undefined || number === null) return '--';
+            
+            if (!showAmounts) {
+                // 隐藏模式：根据数字大小显示不同数量的星号
+                const absNumber = Math.abs(number);
+                if (absNumber >= 100000) return '*****';
+                if (absNumber >= 10000) return '****';
+                if (absNumber >= 1000) return '***';
+                if (absNumber >= 100) return '**';
+                return '*';
+            }
+            
+            return number.toLocaleString('zh-CN');
+        }
+
+        // 格式化金额
+        function formatMoney(amount) {
+            if (amount === undefined || amount === null) return '--';
+            
+            if (!showAmounts) {
+                // 隐藏模式：根据金额大小显示不同数量的星号
+                const absAmount = Math.abs(amount);
+                if (absAmount >= 1000000) return '******';
+                if (absAmount >= 100000) return '*****';
+                if (absAmount >= 10000) return '****';
+                if (absAmount >= 1000) return '***';
+                if (absAmount >= 100) return '**';
+                return '*';
+            }
+            
+            return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // 显示通知
+        function showToast(message, type = 'info') {
+            const toastBody = document.getElementById('toastBody');
+            toastBody.textContent = message;
+            
+            const toastElement = document.getElementById('toast');
+            toastElement.className = `toast ${type === 'error' ? 'bg-danger text-white' : type === 'success' ? 'bg-success text-white' : ''}`;
+            
+            toast.show();
+        }
+
+        // 表格排序功能
+        let sortDirection = {}; // 存储每列的排序方向
+        
+        function sortTable(accountIndex, columnIndex, dataType) {
+            const tableBody = document.getElementById(`positions-table-${accountIndex}`);
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+            
+            // 获取当前排序方向
+            const sortKey = `${accountIndex}-${columnIndex}`;
+            const isAscending = sortDirection[sortKey] !== 'asc';
+            sortDirection[sortKey] = isAscending ? 'asc' : 'desc';
+            
+            // 排序行
+            rows.sort((a, b) => {
+                const cellA = a.cells[columnIndex];
+                const cellB = b.cells[columnIndex];
+                
+                if (!cellA || !cellB) return 0;
+                
+                let valueA, valueB;
+                
+                if (dataType === 'number') {
+                    // 提取数字值（去除货币符号、百分号等）
+                    const textA = cellA.textContent.replace(/[¥,%]/g, '');
+                    const textB = cellB.textContent.replace(/[¥,%]/g, '');
+                    valueA = parseFloat(textA) || 0;
+                    valueB = parseFloat(textB) || 0;
+                } else {
+                    valueA = cellA.textContent.toLowerCase();
+                    valueB = cellB.textContent.toLowerCase();
+                }
+                
+                if (valueA < valueB) return isAscending ? -1 : 1;
+                if (valueA > valueB) return isAscending ? 1 : -1;
+                return 0;
+            });
+            
+            // 重新插入排序后的行
+            rows.forEach(row => tableBody.appendChild(row));
+            
+            // 更新排序图标
+            updateSortIcons(accountIndex, columnIndex, isAscending);
+        }
+        
+        function updateSortIcons(accountIndex, columnIndex, isAscending) {
+            // 重置所有排序图标
+            const table = document.querySelector(`#positions-table-${accountIndex}`).closest('table');
+            const headers = table.querySelectorAll('th.sortable i');
+            headers.forEach(icon => {
+                icon.className = 'bi bi-arrow-down-up';
+            });
+            
+            // 设置当前列的排序图标
+            const currentHeader = table.querySelector(`thead tr`).children[columnIndex];
+            if (currentHeader && currentHeader.classList.contains('sortable')) {
+                const icon = currentHeader.querySelector('i');
+                if (icon) {
+                    icon.className = isAscending ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

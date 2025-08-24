@@ -1,0 +1,35 @@
+# QMT交易系统依赖包
+
+# Web框架
+Flask==2.3.3
+Werkzeug==2.3.7
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+click==8.1.7
+itsdangerous==2.1.2
+
+# 数据处理
+pandas==2.0.3
+numpy==1.24.3
+python-dateutil==2.8.2
+pytz==2023.3
+xtquant
+# QMT量化交易接口
+# 注意：xtquant需要从QMT官方获取，通常不在PyPI上
+# 请从QMT交易终端安装目录中获取xtquant模块
+# xtquant
+
+# 开发和调试工具（可选）
+requests==2.31.0
+python-dotenv==1.0.0
+
+# 注意事项：
+# 1. xtquant是QMT专用的量化交易接口，需要从QMT官方获取
+# 2. 使用前需要安装QMT交易终端并配置正确的路径
+# 3. 建议在虚拟环境中安装依赖包
+# 4. Python版本建议使用3.8-3.11
+# 
+# 安装命令：
+# pip install -r requirements.txt
+# 
+# 如果需要xtquant，请联系QMT官方获取安装包或从QMT安装目录复制相关文件
