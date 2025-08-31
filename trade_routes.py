@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, session, redirect, url_for
 import qmt_data
 from logger_config import get_logger
+from config import get_config
 from functools import wraps
 import hmac
 import hashlib
@@ -29,25 +30,22 @@ def api_signature_required(f):
             log.warning("缺少必要的签名验证参数")
             return jsonify({'error': '缺少必要的签名验证参数'}), 401
         
-        # 验证时间戳（防止重放攻击，允许5分钟误差）
+        # 从配置文件获取API配置
+        config = get_config()
+        api_config = config.api
+        
+        # 验证时间戳（防止重放攻击）
         try:
             request_time = int(timestamp)
             current_time = int(time.time())
-            if abs(current_time - request_time) > 300:  # 5分钟
+            if abs(current_time - request_time) > api_config.signature_timeout:
                 log.warning(f"请求时间戳过期: {timestamp}")
                 return jsonify({'error': '请求时间戳过期'}), 401
         except ValueError:
             log.warning(f"无效的时间戳格式: {timestamp}")
             return jsonify({'error': '无效的时间戳格式'}), 401
         
-        # 预设的客户端密钥（实际使用时应该从配置文件或数据库中读取）
-        # TODO 这里改成自己的客户端id和秘钥，只要一行就行，随便改，客户端用对应的client字符串和秘钥
-        client_secrets = {
-            'qmt_client_001': 'qmt_secret_key_zzzz',
-            'outer_client_002': 'qmt_secret_key_zzzz'
-        }
-        
-        if client_id not in client_secrets:
+        if not api_config.is_valid_client(client_id):
             log.warning(f"无效的客户端ID: {client_id}")
             return jsonify({'error': '无效的客户端ID'}), 401
         
@@ -63,7 +61,7 @@ def api_signature_required(f):
         sign_string = f"{method}\n{path}\n{query_string}\n{body}\n{timestamp}\n{client_id}"
         
         # 计算HMAC-SHA256签名
-        secret_key = client_secrets[client_id]
+        secret_key = api_config.get_client_secret(client_id)
         expected_signature = hmac.new(
             secret_key.encode('utf-8'),
             sign_string.encode('utf-8'),

@@ -14,7 +14,7 @@ QMT交易系统统一配置文件
 import os
 from datetime import timedelta
 from typing import Dict, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -67,6 +67,25 @@ class AuthConfig:
             }
 
 
+@dataclass
+class APIConfig:
+    """API配置"""
+    # HMAC签名验证配置
+    signature_timeout: int = 300  # 签名超时时间（秒），默认5分钟
+    client_secrets: Dict[str, str] = field(default_factory=lambda: {
+        'qmt_client_001': 'qmt_secret_key_zzzz',
+        'outer_client_002': 'qmt_secret_key_zzzz'
+    })
+    
+    def is_valid_client(self, client_id: str) -> bool:
+        """检查客户端ID是否有效"""
+        return client_id in self.client_secrets
+    
+    def get_client_secret(self, client_id: str) -> str:
+        """获取客户端密钥"""
+        return self.client_secrets.get(client_id, '')
+
+
 class Config:
     """主配置类"""
     
@@ -79,6 +98,15 @@ class Config:
         
         # 日志配置
         self.log = LogConfig()
+        
+        # API配置
+        self.api = APIConfig(
+            signature_timeout=int(os.getenv('API_SIGNATURE_TIMEOUT', '300')),
+            client_secrets={
+                'qmt_client_001': os.getenv('QMT_CLIENT_001_SECRET', 'qmt_secret_key_zzzz'),
+                'outer_client_002': os.getenv('OUTER_CLIENT_002_SECRET', 'qmt_secret_key_zzzz')
+            }
+        )
         
         # 交易账户配置
         self.traders = [
@@ -125,6 +153,14 @@ class Config:
             self.auth.users['admin'] = os.getenv('ADMIN_PASSWORD')
         if os.getenv('TRADER_PASSWORD'):
             self.auth.users['trader'] = os.getenv('TRADER_PASSWORD')
+        
+        # API配置
+        if os.getenv('API_SIGNATURE_TIMEOUT'):
+            self.api.signature_timeout = int(os.getenv('API_SIGNATURE_TIMEOUT'))
+        if os.getenv('QMT_CLIENT_001_SECRET'):
+            self.api.client_secrets['qmt_client_001'] = os.getenv('QMT_CLIENT_001_SECRET')
+        if os.getenv('OUTER_CLIENT_002_SECRET'):
+            self.api.client_secrets['outer_client_002'] = os.getenv('OUTER_CLIENT_002_SECRET')
     
     def get_flask_config(self) -> Dict[str, Any]:
         """获取Flask应用配置字典"""

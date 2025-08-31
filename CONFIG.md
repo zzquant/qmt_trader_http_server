@@ -27,7 +27,11 @@
    - `console_output`: 是否输出到控制台
    - `file_output`: 是否输出到文件
 
-4. **TraderConfig** - 交易账户配置
+4. **APIConfig** - API接口配置
+   - `signature_timeout`: HMAC签名超时时间（秒）
+   - `client_secrets`: 客户端密钥字典
+
+5. **TraderConfig** - 交易账户配置
    - `account_id`: 账户ID
    - `account_type`: 账户类型
    - `account_name`: 账户名称
@@ -87,6 +91,9 @@ TRADER_PASSWORD=your-trader-password
 - `LOG_DIR`: 日志目录
 - `ADMIN_PASSWORD`: 管理员密码
 - `TRADER_PASSWORD`: 交易员密码
+- `API_SIGNATURE_TIMEOUT`: API签名超时时间（秒）
+- `QMT_CLIENT_001_SECRET`: QMT客户端001的密钥
+- `OUTER_CLIENT_002_SECRET`: 外部客户端002的密钥
 
 ## 配置优先级
 
