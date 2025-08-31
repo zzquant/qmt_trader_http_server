@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置管理</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
+    <style>
+        .config-section {
+            margin-bottom: 30px;
+        }
+        .config-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 0;
+        }
+        .config-body {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 20px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .config-value {
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+        .btn-save:hover {
+            background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+            color: white;
+        }
+        .btn-reset {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+        .btn-reset:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+            color: white;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+        .alert-info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        .password-field {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+        }
+        .trader-config {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: white;
+        }
+        .trader-header {
+            background: #e9ecef;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+        }
+        .trader-body {
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-gear-fill"></i> 配置管理
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/trading">
+                    <i class="bi bi-graph-up"></i> 交易界面
+                </a>
+                <a class="nav-link" href="/logout">
+                    <i class="bi bi-box-arrow-right"></i> 退出登录
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 提示信息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('config_page') }}">
+            <!-- Flask 配置 -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h5 class="mb-0"><i class="bi bi-server"></i> Flask 应用配置</h5>
+                </div>
+                <div class="config-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">调试模式</label>
+                                <select class="form-select" name="flask_debug">
+                                    <option value="true" {{ 'selected' if config.flask.debug else '' }}>启用</option>
+                                    <option value="false" {{ 'selected' if not config.flask.debug else '' }}>禁用</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">服务器端口</label>
+                                <input type="number" class="form-control" name="flask_port" value="{{ config.flask.port }}" min="1" max="65535">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">服务器地址</label>
+                                <input type="text" class="form-control" name="flask_host" value="{{ config.flask.host }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">会话有效期（天）</label>
+                                <input type="number" class="form-control" name="flask_session_lifetime" value="{{ config.flask.permanent_session_lifetime_days }}" min="1" max="365">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户认证配置 -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h5 class="mb-0"><i class="bi bi-person-lock"></i> 用户认证配置</h5>
+                </div>
+                <div class="config-body">
+                    <div class="row">
+                        {% for username, password in config.auth.users.items() %}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ username }} 密码</label>
+                                <div class="password-field">
+                                    <input type="password" class="form-control" name="auth_{{ username }}" value="{{ password }}" id="pwd_{{ username }}">
+                                    <i class="bi bi-eye password-toggle" onclick="togglePassword('pwd_{{ username }}', this)"></i>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- API 配置 -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h5 class="mb-0"><i class="bi bi-key"></i> API 配置</h5>
+                </div>
+                <div class="config-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">签名超时时间（秒）</label>
+                                <input type="number" class="form-control" name="api_signature_timeout" value="{{ config.api.signature_timeout }}" min="60" max="3600">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        {% for client_id, secret in config.api.client_secrets.items() %}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ client_id }} 密钥</label>
+                                <div class="password-field">
+                                    <input type="password" class="form-control" name="api_{{ client_id }}" value="{{ secret }}" id="secret_{{ client_id }}">
+                                    <i class="bi bi-eye password-toggle" onclick="togglePassword('secret_{{ client_id }}', this)"></i>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日志配置 -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h5 class="mb-0"><i class="bi bi-file-text"></i> 日志配置</h5>
+                </div>
+                <div class="config-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">日志级别</label>
+                                <select class="form-select" name="log_level">
+                                    <option value="DEBUG" {{ 'selected' if config.log.level == 'DEBUG' else '' }}>DEBUG</option>
+                                    <option value="INFO" {{ 'selected' if config.log.level == 'INFO' else '' }}>INFO</option>
+                                    <option value="WARNING" {{ 'selected' if config.log.level == 'WARNING' else '' }}>WARNING</option>
+                                    <option value="ERROR" {{ 'selected' if config.log.level == 'ERROR' else '' }}>ERROR</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">日志目录</label>
+                                <input type="text" class="form-control" name="log_dir" value="{{ config.log.log_dir }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">控制台输出</label>
+                                <select class="form-select" name="log_console">
+                                    <option value="true" {{ 'selected' if config.log.console_output else '' }}>启用</option>
+                                    <option value="false" {{ 'selected' if not config.log.console_output else '' }}>禁用</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">文件输出</label>
+                                <select class="form-select" name="log_file">
+                                    <option value="true" {{ 'selected' if config.log.file_output else '' }}>启用</option>
+                                    <option value="false" {{ 'selected' if not config.log.file_output else '' }}>禁用</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交易账户配置 -->
+            <div class="config-section">
+                <div class="config-header">
+                    <h5 class="mb-0"><i class="bi bi-bank"></i> 交易账户配置</h5>
+                </div>
+                <div class="config-body">
+                    {% for trader in config.traders %}
+                    <div class="trader-config">
+                        <div class="trader-header">
+                            <i class="bi bi-person-circle"></i> {{ trader.account_name }} ({{ trader.account_id }})
+                        </div>
+                        <div class="trader-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">账户ID</label>
+                                        <input type="text" class="form-control config-value" value="{{ trader.account_id }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">账户类型</label>
+                                        <input type="text" class="form-control config-value" value="{{ trader.account_type }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">账户名称</label>
+                                        <input type="text" class="form-control config-value" value="{{ trader.account_name }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">启用状态</label>
+                                        <input type="text" class="form-control config-value" value="{{ '启用' if trader.enabled else '禁用' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label">QMT路径</label>
+                                        <input type="text" class="form-control config-value" value="{{ trader.qmt_path }}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>注意：</strong>交易账户配置需要在 config.py 文件中手动修改，修改后需要重启服务器。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="text-center mb-4">
+                <button type="button" class="btn btn-save me-3" onclick="showConfirmModal()">
+                    <i class="bi bi-check-circle"></i> 保存配置
+                </button>
+                <button type="button" class="btn btn-reset" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> 重置
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 确认模态窗口 -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">
+                        <i class="bi bi-exclamation-triangle text-warning"></i> 确认保存配置
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">确定要保存配置更改吗？</p>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>注意：</strong>某些更改可能需要重启服务器才能生效。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> 取消
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="confirmSave()">
+                        <i class="bi bi-check-circle"></i> 确认保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        function togglePassword(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        }
+
+        // 显示确认模态窗口
+        function showConfirmModal() {
+            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            modal.show();
+        }
+
+        // 确认保存配置
+        function confirmSave() {
+            const form = document.querySelector('form');
+            if (form) {
+                // 关闭模态窗口
+                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+                modal.hide();
+                // 提交表单
+                form.submit();
+            }
+        }
+    </script>
+</body>
+</html>

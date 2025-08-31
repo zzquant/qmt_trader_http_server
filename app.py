@@ -67,6 +67,50 @@ def login():
     
     return render_template('login.html')
 
+@app.route('/config', methods=['GET', 'POST'])
+@login_required
+def config_page():
+    """配置管理页面"""
+    if request.method == 'POST':
+        try:
+            # 更新Flask配置
+            config.flask.debug = request.form.get('flask_debug') == 'true'
+            config.flask.port = int(request.form.get('flask_port', config.flask.port))
+            config.flask.host = request.form.get('flask_host', config.flask.host)
+            config.flask.permanent_session_lifetime_days = int(request.form.get('flask_session_lifetime', config.flask.permanent_session_lifetime_days))
+            
+            # 更新用户认证配置
+            for username in config.auth.users.keys():
+                new_password = request.form.get(f'auth_{username}')
+                if new_password:
+                    config.auth.users[username] = new_password
+            
+            # 更新API配置
+            config.api.signature_timeout = int(request.form.get('api_signature_timeout', config.api.signature_timeout))
+            for client_id in config.api.client_secrets.keys():
+                new_secret = request.form.get(f'api_{client_id}')
+                if new_secret:
+                    config.api.client_secrets[client_id] = new_secret
+            
+            # 更新日志配置
+            config.log.level = request.form.get('log_level', config.log.level)
+            config.log.log_dir = request.form.get('log_dir', config.log.log_dir)
+            config.log.console_output = request.form.get('log_console') == 'true'
+            config.log.file_output = request.form.get('log_file') == 'true'
+            
+            # 保存配置到.env文件
+            from config import save_config_to_env_file
+            save_config_to_env_file(config)
+            
+            log.info(f"用户 {session.get('username')} 更新了系统配置")
+            flash('配置保存成功！某些更改可能需要重启服务器才能生效。', 'success')
+            
+        except Exception as e:
+            log.error(f"保存配置时发生错误: {str(e)}")
+            flash(f'保存配置失败: {str(e)}', 'error')
+    
+    return render_template('config.html', config=config)
+
 @app.route('/logout')
 def logout():
     username = session.get('username', '未知用户')
