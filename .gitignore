@@ -46,8 +46,12 @@ venv.bak/
 logs/
 *.log
 
-# 配置文件
+# 配置文件和环境变量
 /config.toml
+.env
+.env.local
+.env.production
+.env.development
 /config/config.json
 
 # 数据存储

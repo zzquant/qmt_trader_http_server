@@ -1,25 +1,19 @@
 from flask import Flask, redirect, render_template, request, session, flash, url_for
-from datetime import timedelta
-
 from functools import wraps
 from qmt_trade import MyTradeAPIWrapper
 from trade_routes import trade_bp, init_trade_routes
 from logger_config import setup_logging, get_logger
+from config import get_config
+
+# 获取配置
+config = get_config()
 
 # 初始化日志
 log = setup_logging()
 
 app = Flask(__name__)
-app.config['JSON_AS_ASCII'] = False
-app.secret_key = 'qmt_trader_secret_key_2024'  # 用于session加密
-# 设置永久session有效期为30天
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=180)
-
-# 固定的登录账号密码
-USERS = {
-    'admin': 'zizai123',
-    'trader': 'zizai123'
-}
+# 使用统一配置
+app.config.update(config.get_flask_config())
 
 # 登录验证装饰器
 def login_required(f):
@@ -30,15 +24,17 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# 初始化交易器数组
-traders = [
-    MyTradeAPIWrapper("99007036", 1001, "账户1", qmtpath=r"D:\迅投极速策略交易系统交易终端 大同证券QMT实盘\userdata_mini"),
-    # MyTradeAPIWrapper("38800001476301", 1001, "账户2", qmtpath=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\userdata_mini"),
-]
-
-# 注意：请在实际使用时配置正确的账户信息
-# account_id 必须是数字字符串，如 "12345678"
-# qmtpath 需要设置为实际的QMT安装路径
+# 初始化交易器数组（使用配置文件）
+traders = []
+for trader_config in config.get_enabled_traders():
+    trader = MyTradeAPIWrapper(
+        trader_config.account_id,
+        trader_config.account_type,
+        trader_config.account_name,
+        qmtpath=trader_config.qmt_path
+    )
+    traders.append(trader)
+    log.info(f"初始化交易账户: {trader_config.account_name} ({trader_config.account_id})")
 
 # 注册交易路由蓝图
 app.register_blueprint(trade_bp)
@@ -59,7 +55,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-        if username in USERS and USERS[username] == password:
+        if username in config.auth.users and config.auth.users[username] == password:
             session.permanent = True  # 启用永久session
             session['logged_in'] = True
             session['username'] = username
@@ -127,5 +123,6 @@ def handle_exception(e):
 
 if __name__ == '__main__':
     log.info("启动Flask应用")
-    app.run(debug=True, host='0.0.0.0', port=9091)
+    log.info(f"服务器配置: {config.flask.host}:{config.flask.port}, Debug: {config.flask.debug}")
+    app.run(debug=config.flask.debug, host=config.flask.host, port=config.flask.port)
     log.info("Flask应用已停止")

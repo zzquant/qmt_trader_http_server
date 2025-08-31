@@ -9,26 +9,52 @@ def setup_logging():
     Returns:
         logging.Logger: 配置好的日志记录器
     """
-    # 创建logs目录
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    # 延迟导入配置，避免循环导入
+    try:
+        from config import get_config
+        config = get_config()
+        log_config = config.log
+    except ImportError:
+        # 如果配置文件不可用，使用默认配置
+        class DefaultLogConfig:
+            level = 'INFO'
+            format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            log_dir = 'logs'
+            file_encoding = 'utf-8'
+            console_output = True
+            file_output = True
+            
+            def get_log_file_path(self):
+                return os.path.join(self.log_dir, f'app_{datetime.now().strftime("%Y%m%d")}.log')
+        
+        log_config = DefaultLogConfig()
     
-    # 设置日志格式
-    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # 创建日志目录
+    if not os.path.exists(log_config.log_dir):
+        os.makedirs(log_config.log_dir)
+    
+    # 准备处理器列表
+    handlers = []
+    
+    # 控制台输出
+    if log_config.console_output:
+        handlers.append(logging.StreamHandler())
+    
+    # 文件输出
+    if log_config.file_output:
+        handlers.append(
+            logging.FileHandler(
+                log_config.get_log_file_path(),
+                encoding=log_config.file_encoding
+            )
+        )
     
     # 配置根日志记录器
     logging.basicConfig(
-        level=logging.INFO,
-        format=log_format,
-        handlers=[
-            # 控制台输出
-            logging.StreamHandler(),
-            # 文件输出
-            logging.FileHandler(
-                f'logs/app_{datetime.now().strftime("%Y%m%d")}.log',
-                encoding='utf-8'
-            )
-        ]
+        level=getattr(logging, log_config.level.upper()),
+        format=log_config.format,
+        handlers=handlers,
+        force=True  # 强制重新配置
     )
     
     return logging.getLogger(__name__)
