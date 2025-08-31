@@ -80,7 +80,7 @@ async function callOuterTradeApi(operation = 'buy') {
     console.log(`=== 测试单笔${operation}交易接口 ===`);
     
     // 配置信息
-    const baseUrl = "http://localhost:5000";
+    const baseUrl = "http://localhost:9091";
     const clientId = "outer_client_002";
     const secretKey = "qmt_secret_key_zzzz";
     
@@ -132,7 +132,7 @@ async function callOuterTradeBatchApi(operation = 'buy') {
     console.log(`\n=== 测试批量${operation}交易接口 ===`);
     
     // 配置信息
-    const baseUrl = "http://localhost:5000";
+    const baseUrl = "http://localhost:9091";
     const clientId = "outer_client_002";
     const secretKey = "qmt_secret_key_zzzz";
     
@@ -200,7 +200,7 @@ async function testInvalidSignature() {
     console.log('\n=== 测试无效签名 ===');
     
     // 配置信息
-    const baseUrl = "http://localhost:5000";
+    const baseUrl = "http://localhost:9091";
     const clientId = "outer_client_002";
     
     // 请求参数

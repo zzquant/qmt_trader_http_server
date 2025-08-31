@@ -28,7 +28,7 @@ def generate_signature(method, path, query_string, body, timestamp, client_id, s
 def call_outer_trade_api(operation='buy'):
     """调用单笔交易接口"""
     # 配置信息
-    base_url = "http://localhost:5000"
+    base_url = "http://localhost:9091"
     client_id = "outer_client_002"
     secret_key = "qmt_secret_key_zzzz"
     
@@ -74,7 +74,7 @@ def call_outer_trade_api(operation='buy'):
 def call_outer_trade_batch_api(operation='buy'):
     """调用批量交易接口"""
     # 配置信息
-    base_url = "http://localhost:5000"
+    base_url = "http://localhost:9091"
     client_id = "outer_client_002"
     secret_key = "qmt_secret_key_zzzz"
     
@@ -134,7 +134,7 @@ def test_invalid_signature():
     print("\n=== 测试无效签名 ===")
     
     # 配置信息
-    base_url = "http://localhost:5000"
+    base_url = "http://localhost:9091"
     client_id = "outer_client_002"
     secret_key = "wrong_secret_key"  # 故意使用错误的密钥
     
