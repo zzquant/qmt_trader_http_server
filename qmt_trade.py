@@ -418,15 +418,27 @@ class MyTradeAPIWrapper:
                     # self._record_trade(symbol, order_num, cur_price)
                     pass
             else:
-                log.info(f"{self.account_id} money={value} not enough")
-                return {
-                    'success': False,
-                    'symbol': symbol,
-                    'order_num': 0,
-                    'price': cur_price,
-                    'error': 'Insufficient funds',
-                    'message': f'资金不足: 需要{value}, 可用{available_cash}'
-                }
+                if value > available_cash:
+                    log.info(f"{self.account_id} money={value} not enough")
+                    return {
+                        'success': False,
+                        'symbol': symbol,
+                        'order_num': 0,
+                        'price': cur_price,
+                        'error': 'Insufficient funds',
+                        'message': f'资金不足: 需要{value}, 可用{available_cash}'
+                    }
+                else:
+                    log.info(f"{self.account_id} money={value} not enough to buy 100股")
+                    return {
+                        'success': False,
+                        'symbol': symbol,
+                        'order_num': 0,
+                        'price': cur_price,
+                        'error': 'Insufficient funds',
+                        'message': f'指定仓位资金不足: 最低100股需要:{cur_price*100:.2f}, 当前可用:{available_cash}'
+                    }
+
         except Exception as e:
             log.error(traceback.format_exc())
             return {
