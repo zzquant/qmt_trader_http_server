@@ -192,6 +192,10 @@ def get_positions(trader_index):
                     current_price = qmt_data.get_last_price(symbol)  # 获取实时价格
                 except:
                     current_price = avg_price
+                try:
+                    symbol_name = qmt_data.get_instrument_detail(symbol)['InstrumentName']
+                except:
+                    symbol_name = symbol
                     
                 cost_value = volume * avg_price if avg_price > 0 else 0
                 current_value = volume * current_price if current_price > 0 else market_value
@@ -200,7 +204,7 @@ def get_positions(trader_index):
                     
                 position_data = {
                     'symbol': symbol,
-                    'name': symbol,  # 暂时使用股票代码作为名称
+                    'name': symbol_name,  # 暂时使用股票代码作为名称
                     'volume': volume,  # 当前持股
                     'can_use_volume': can_use_volume,  # 可用股数
                     'frozen_volume': frozen_volume,  # 冻结数量
