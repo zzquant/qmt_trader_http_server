@@ -33,7 +33,7 @@ def login_required(f):
 # 初始化交易器数组
 traders = [
     MyTradeAPIWrapper("99007036", 1001, "账户1", qmtpath=r"D:\迅投极速策略交易系统交易终端 大同证券QMT实盘\userdata_mini"),
-    # MyTradeAPIWrapper("38881476301", 1001, "账户2", qmtpath=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\userdata_mini"),
+    # MyTradeAPIWrapper("38800001476301", 1001, "账户2", qmtpath=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\userdata_mini"),
 ]
 
 # 注意：请在实际使用时配置正确的账户信息

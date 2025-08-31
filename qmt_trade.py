@@ -181,11 +181,20 @@ class MyTradeAPIWrapper:
                 value = total_value * pct_target
                 if value > available_cash:
                     value = available_cash
-                self.trade_buy(symbol, cur_price, value, pricetype, record)
-                break
-            except:
+                return self.trade_buy(symbol, cur_price, value, pricetype, record)
+            except Exception as e:
                 self.connect_trade_api()  # 重新连接TradeAPI
                 log.error(traceback.format_exc())
+                if _ == 2:  # 最后一次重试失败
+                    return {
+                        'success': False,
+                        'symbol': symbol,
+                        'order_num': 0,
+                        'price': cur_price,
+                        'value': 0,
+                        'order_result': None,
+                        'message': f'获取账户信息失败，重试3次后仍然失败: {str(e)}'
+                    }
                 continue
 
     def trade_sell_target_pct(self, symbol, cur_price, pct_target):
@@ -201,7 +210,18 @@ class MyTradeAPIWrapper:
             order_num = _p[symbol]['can_use_volume']
             order_num_sell = order_num * pct_target
             order_num_sell = int(order_num_sell / 100) * 100
-            self.trade_sell(symbol, cur_price, order_num_sell)
+            return self.trade_sell(symbol, cur_price, order_num_sell)
+        else:
+            return {
+                'success': False,
+                'symbol': symbol,
+                'order_num': 0,
+                'price': cur_price,
+                'value': 0,
+                'order_result': None,
+                'message': f'未持有该股票: {symbol}'
+            }
+
 
     def get_position(self, available_type=1):
         """获取持仓
@@ -242,14 +262,14 @@ class MyTradeAPIWrapper:
                     else:
                         stock_code = str(stock_code)
 
-                    if stock_code.startswith("SHR"):
-                        continue
-                    if stock_code.startswith("13"):
-                        continue
-                    if stock_code.startswith("S"):
-                        continue
-                    if stock_code.startswith("5"):
-                        continue
+                    # if stock_code.startswith("SHR"):
+                    #     continue
+                    # if stock_code.startswith("13"):
+                    #     continue
+                    # if stock_code.startswith("S"):
+                    #     continue
+                    # if stock_code.startswith("5"):
+                    #     continue
 
                     # 获取持仓信息，支持XtPosition对象和字典两种格式
                     if hasattr(position_info, 'can_use_volume'):
@@ -350,38 +370,73 @@ class MyTradeAPIWrapper:
                 for _ in range(3):
                     try:
                         if pricetype == 0:
-                            self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                        xtconstant.FIX_PRICE, cur_price,
                                                        strategy_name)  # 限价单 # 要排板和固定位置挂单，不能用自动撤单函数
                         elif pricetype == 3:  # 最新价下单。当pricetype为1－13时，price表示pricetype指定价格的浮动价，最终下单委托价格pricetype指定价格+price，若最终价格大于涨停价，最终价格取涨停价 ， 若小于跌停价，最终价格取跌停价
-                            self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                        xtconstant.LATEST_PRICE, cur_price, strategy_name)
                         elif pricetype == 21:  # 当pricetype为21时，买入下单时会紧贴价格笼子上沿，卖出下单时会紧贴价格笼子下沿
-                            self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                        xtconstant.LATEST_PRICE, cur_price, strategy_name)
                         elif pricetype == 17:  # 当pricetype为17时，price表示市价类型，对于沪深有不同的含义。上证：1-五档即成剩撤，2-五档即成剩转限，3-本方最优，4-对手方最优；深证：1-对手方最优，2-本方最优，3-即成剩撤，4-五档即成剩撤，5-全额成交或撤
                             if symbol[-2:] == "SH":
-                                self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                            xtconstant.MARKET_SH_CONVERT_5_LIMIT, cur_price,
                                                            strategy_name)
                             else:
-                                self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                            xtconstant.MARKET_SZ_CONVERT_5_CANCEL, cur_price,
                                                            strategy_name)
-                        break
+                        
+                        # 返回成功结果
+                        return {
+                            'success': True,
+                            'symbol': symbol,
+                            'order_num': order_num,
+                            'price': cur_price,
+                            'value': order_num * cur_price,
+                            'order_result': order_result,
+                            'message': f'买入订单提交成功: {symbol} {order_num}股 @{cur_price}'
+                        }
                     except Exception as e:
                         msg = f"{self.account_id} order retry {_} TradeAPI Error"
                         send_msg(msg)
                         log.error(msg + f"e: {e}")
                         self.connect_trade_api()  # 重新连接TradeAPI
+                        if _ == 2:  # 最后一次重试失败
+                            return {
+                                'success': False,
+                                'symbol': symbol,
+                                'order_num': order_num,
+                                'price': cur_price,
+                                'error': str(e),
+                                'message': f'买入订单提交失败: {symbol} {order_num}股 @{cur_price}, 错误: {str(e)}'
+                            }
                         continue
                 if record == 1:
                     # self._record_trade(symbol, order_num, cur_price)
                     pass
             else:
                 log.info(f"{self.account_id} money={value} not enough")
-        except:
+                return {
+                    'success': False,
+                    'symbol': symbol,
+                    'order_num': 0,
+                    'price': cur_price,
+                    'error': 'Insufficient funds',
+                    'message': f'资金不足: 需要{value}, 可用{available_cash}'
+                }
+        except Exception as e:
             log.error(traceback.format_exc())
+            return {
+                'success': False,
+                'symbol': symbol if 'symbol' in locals() else '',
+                'order_num': 0,
+                'price': cur_price,
+                'error': str(e),
+                'message': f'买入操作异常: {str(e)}'
+            }
 
     def trade_buy_shares(self, symbol, cur_price, shares, pricetype=0, record=1):
         """按固定股数买入股票"""
@@ -398,47 +453,94 @@ class MyTradeAPIWrapper:
                 shares = math.floor(available_cash / cur_price / 100) * 100
                 if shares <= 0:
                     log.info(f"{self.account_id} 资金不足，无法买入")
-                    return
+                    return {
+                        'success': False,
+                        'symbol': symbol,
+                        'order_num': 0,
+                        'price': cur_price,
+                        'value': 0,
+                        'order_result': None,
+                        'message': f'资金不足，无法买入: 需要{required_value}, 可用{available_cash}'
+                    }
 
             symbol = symbol_convert(symbol)
             # 确保股数是100的倍数
             order_num = int(shares / 100) * 100
+            value = order_num * cur_price
 
             if order_num > 0:
                 for _ in range(3):
                     try:
                         if pricetype == 0:
-                            self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                        xtconstant.FIX_PRICE, cur_price, strategy_name)
                         elif pricetype == 3:
-                            self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                        xtconstant.LATEST_PRICE, cur_price, strategy_name)
                         elif pricetype == 21:
-                            self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                        xtconstant.LATEST_PRICE, cur_price, strategy_name)
                         elif pricetype == 17:
                             if symbol[-2:] == "SH":
-                                self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                            xtconstant.MARKET_SH_CONVERT_5_LIMIT, cur_price,
                                                            strategy_name)
                             else:
-                                self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
                                                            xtconstant.MARKET_SZ_CONVERT_5_CANCEL, cur_price,
                                                            strategy_name)
-                        break
+                        
+                        if record == 1:
+                            # self._record_trade(symbol, order_num, cur_price)
+                            pass
+                        
+                        return {
+                            'success': True,
+                            'symbol': symbol,
+                            'order_num': order_num,
+                            'price': cur_price,
+                            'value': value,
+                            'order_result': order_result,
+                            'message': f'买入订单提交成功: {symbol} {order_num}股 价格{cur_price}'
+                        }
                     except Exception as e:
                         msg = f"{self.account_id} order retry {_} TradeAPI Error"
                         send_msg(msg)
                         log.error(msg + f"e: {e}")
                         self.connect_trade_api()
+                        if _ == 2:  # 最后一次重试失败
+                            return {
+                                'success': False,
+                                'symbol': symbol,
+                                'order_num': order_num,
+                                'price': cur_price,
+                                'value': value,
+                                'order_result': None,
+                                'message': f'买入失败，重试3次后仍然失败: {str(e)}'
+                            }
                         continue
-                if record == 1:
-                    # self._record_trade(symbol, order_num, cur_price)
-                    pass
             else:
                 log.info(f"{self.account_id} 股数={shares} 不足100股")
-        except:
+                return {
+                    'success': False,
+                    'symbol': symbol,
+                    'order_num': order_num,
+                    'price': cur_price,
+                    'value': 0,
+                    'order_result': None,
+                    'message': f'股数不足100股: {shares}'
+                }
+        except Exception as e:
             log.error(traceback.format_exc())
+            return {
+                'success': False,
+                'symbol': symbol,
+                'order_num': 0,
+                'price': cur_price,
+                'value': 0,
+                'order_result': None,
+                'message': f'买入异常: {str(e)}'
+            }
 
     def trade_allin(self, symbol, cur_price):
         self.trade_target_pct(symbol, cur_price, 1)
@@ -462,21 +564,60 @@ class MyTradeAPIWrapper:
                     order_num = _p[symbol]['can_use_volume']
                 log.info("%s: do sell %s %s %s" % (self.account_id, symbol, cur_price, order_num))
                 if order_num >= 100:
+                    value = order_num * cur_price
                     if pricetype == 0:
                         # self.trade_api.order(symbol, -order_num, price=cur_price)
-                        self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
+                        order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
                                                    xtconstant.FIX_PRICE, cur_price, f"qunat_{self.quant_code}")
                     else:
                         # 超过spread不再下单，repricetype=11 买三价，12买四，13买五，
                         # 超过spread不再下单，repricetype不传，按照reprice下单
                         # rechase_api = self.trade_api.NEW_RECHASE(reprice=0, spread=0.2, entrustcnt=5, revoke=True, timeout=6, repricetype=11)
                         # rechase_api.order(symbol, -order_num, price=cur_price)
-                        self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
+                        order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
                                                    xtconstant.FIX_PRICE, cur_price, f"qunat_{self.quant_code}")
+                    
+                    return {
+                        'success': True,
+                        'symbol': symbol,
+                        'order_num': order_num,
+                        'price': cur_price,
+                        'value': value,
+                        'order_result': order_result,
+                        'message': f'卖出订单提交成功: {symbol} {order_num}股 价格{cur_price}'
+                    }
                 else:
                     log.info("order_num error %s %s" % (symbol, order_num))
-        except:
+                    return {
+                        'success': False,
+                        'symbol': symbol,
+                        'order_num': order_num,
+                        'price': cur_price,
+                        'value': 0,
+                        'order_result': None,
+                        'message': f'卖出股数不足100股: {order_num}'
+                    }
+            else:
+                return {
+                    'success': False,
+                    'symbol': symbol,
+                    'order_num': 0,
+                    'price': cur_price,
+                    'value': 0,
+                    'order_result': None,
+                    'message': f'未持有该股票: {symbol}'
+                }
+        except Exception as e:
             log.error(traceback.format_exc())
+            return {
+                'success': False,
+                'symbol': symbol,
+                'order_num': order_num,
+                'price': cur_price,
+                'value': 0,
+                'order_result': None,
+                'message': f'卖出异常: {str(e)}'
+            }
 
     def cancel_all_orders_sale(self):
         self.cancel_all_orders(xtconstant.STOCK_SELL)

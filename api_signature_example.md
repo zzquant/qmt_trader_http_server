@@ -20,7 +20,7 @@
 
 ```
 qmt_client_001 -> qmt_secret_key_2024_v1
-outer_client_002 -> outer_secret_key_2024_v2
+outer_client_002 -> qmt_secret_key_zzzz
 ```
 
 ### 3. 签名生成步骤
@@ -42,6 +42,35 @@ METHOD\nPATH\nQUERY_STRING\nBODY\nTIMESTAMP\nCLIENT_ID
 #### 步骤2：计算HMAC-SHA256签名
 
 使用客户端密钥对签名字符串进行HMAC-SHA256加密，得到十六进制签名。
+
+## 可用的外部交易接口
+
+### 1. 单笔交易接口
+
+**接口地址**: `POST /qmt/trade/api/outer/trade/<operation>`
+
+**路径参数**:
+- `operation` (string): 操作类型，必须是 `buy` 或 `sell`
+
+**请求参数**:
+- `trader_index` (int): 交易器索引（0开始）
+- `symbol` (string): 股票代码（如"000001"）
+- `trade_price` (float): 交易价格
+- `position_pct` (float): 目标仓位百分比（0.1表示10%）
+- `strategy_name` (string, 可选): 策略名称，默认"外部策略"
+
+### 2. 批量交易接口
+
+**接口地址**: `POST /qmt/trade/api/outer/trade/batch/<operation>`
+
+**路径参数**:
+- `operation` (string): 操作类型，必须是 `buy` 或 `sell`
+
+**请求参数**:
+- `symbol` (string): 股票代码
+- `trade_price` (float): 交易价格
+- `position_pct` (float): 目标仓位百分比（0.1表示10%）
+- `strategy_name` (string, 可选): 策略名称，默认"外部策略"
 
 ## Python调用示例
 
@@ -66,25 +95,24 @@ def generate_signature(method, path, query_string, body, timestamp, client_id, s
     
     return signature
 
-def call_outer_trade_api():
-    """调用第三方交易API示例"""
+def call_outer_trade_api(operation='buy'):
+    """调用第三方单笔交易API示例"""
     # 配置信息
     base_url = "http://localhost:5000"
     client_id = "outer_client_002"
-    secret_key = "outer_secret_key_2024_v2"
+    secret_key = "qmt_secret_key_zzzz"
     
     # 请求参数
     method = "POST"
-    path = "/qmt/trade/api/outer/trade"
+    path = f"/qmt/trade/api/outer/trade/{operation}"
     query_string = ""  # 没有查询参数
     
     # 请求体
     data = {
         "trader_index": 0,
-        "stock_code": "000001",
-        "price": 10.50,
-        "volume": 100,
-        "order_type": 23,  # 限价买入
+        "symbol": "000001",
+        "trade_price": 10.50,
+        "position_pct": 0.1,  # 10%仓位
         "strategy_name": "外部策略"
     }
     body = json.dumps(data, sort_keys=True, separators=(',', ':'))
@@ -112,8 +140,58 @@ def call_outer_trade_api():
     
     return response
 
+def call_outer_trade_batch_api(operation='buy'):
+    """调用第三方批量交易API示例"""
+    # 配置信息
+    base_url = "http://localhost:5000"
+    client_id = "outer_client_002"
+    secret_key = "qmt_secret_key_zzzz"
+    
+    # 请求参数
+    method = "POST"
+    path = f"/qmt/trade/api/outer/trade/batch/{operation}"
+    query_string = ""  # 没有查询参数
+    
+    # 请求体
+    data = {
+        "symbol": "000001",
+        "trade_price": 10.50,
+        "position_pct": 0.1,  # 10%仓位
+        "strategy_name": "外部批量策略"
+    }
+    body = json.dumps(data, sort_keys=True, separators=(',', ':'))
+    
+    # 生成时间戳
+    timestamp = str(int(time.time()))
+    
+    # 生成签名
+    signature = generate_signature(method, path, query_string, body, timestamp, client_id, secret_key)
+    
+    # 构建请求头
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Client-ID': client_id,
+        'X-Timestamp': timestamp,
+        'X-Signature': signature
+    }
+    
+    # 发送请求
+    url = f"{base_url}{path}"
+    response = requests.post(url, headers=headers, json=data)
+    
+    print(f"状态码: {response.status_code}")
+    print(f"响应: {response.json()}")
+    
+    return response
+
 if __name__ == "__main__":
+    # 测试单笔交易
+    print("=== 单笔交易测试 ===")
     call_outer_trade_api()
+    
+    # 测试批量交易
+    print("\n=== 批量交易测试 ===")
+    call_outer_trade_batch_api()
 ```
 
 ## JavaScript调用示例
@@ -134,27 +212,26 @@ function generateSignature(method, path, queryString, body, timestamp, clientId,
     return signature;
 }
 
-async function callOuterTradeApi() {
+async function callOuterTradeApi(operation = 'buy') {
     // 配置信息
     const baseUrl = "http://localhost:5000";
     const clientId = "outer_client_002";
-    const secretKey = "outer_secret_key_2024_v2";
+    const secretKey = "qmt_secret_key_zzzz";
     
     // 请求参数
     const method = "POST";
-    const path = "/qmt/trade/api/outer/trade";
+    const path = `/qmt/trade/api/outer/trade/${operation}`;
     const queryString = "";  // 没有查询参数
     
     // 请求体
     const data = {
         trader_index: 0,
-        stock_code: "000001",
-        price: 10.50,
-        volume: 100,
-        order_type: 23,  // 限价买入
+        symbol: "000001",
+        trade_price: 10.50,
+        position_pct: 0.1,  // 10%仓位
         strategy_name: "外部策略"
     };
-    const body = JSON.stringify(data);
+    const body = JSON.stringify(data, Object.keys(data).sort());
     
     // 生成时间戳
     const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -189,7 +266,69 @@ async function callOuterTradeApi() {
     }
 }
 
-callOuterTradeApi();
+async function callOuterTradeBatchApi(operation = 'buy') {
+    // 配置信息
+    const baseUrl = "http://localhost:5000";
+    const clientId = "outer_client_002";
+    const secretKey = "qmt_secret_key_zzzz";
+    
+    // 请求参数
+    const method = "POST";
+    const path = `/qmt/trade/api/outer/trade/batch/${operation}`;
+    const queryString = "";  // 没有查询参数
+    
+    // 请求体
+    const data = {
+        symbol: "000001",
+        trade_price: 10.50,
+        position_pct: 0.1,  // 10%仓位
+        strategy_name: "外部批量策略"
+    };
+    const body = JSON.stringify(data, Object.keys(data).sort());
+    
+    // 生成时间戳
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    
+    // 生成签名
+    const signature = generateSignature(method, path, queryString, body, timestamp, clientId, secretKey);
+    
+    // 构建请求头
+    const headers = {
+        'Content-Type': 'application/json',
+        'X-Client-ID': clientId,
+        'X-Timestamp': timestamp,
+        'X-Signature': signature
+    };
+    
+    // 发送请求
+    const url = `${baseUrl}${path}`;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: body
+        });
+        
+        const result = await response.json();
+        console.log(`状态码: ${response.status}`);
+        console.log(`响应:`, result);
+        
+        return result;
+    } catch (error) {
+        console.error('请求失败:', error);
+    }
+}
+
+// 测试调用
+async function main() {
+    console.log('=== 单笔交易测试 ===');
+    await callOuterTradeApi();
+    
+    console.log('\n=== 批量交易测试 ===');
+    await callOuterTradeBatchApi();
+}
+
+main();
 ```
 
 ## 安全特性

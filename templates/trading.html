@@ -493,8 +493,8 @@
                 
                 return `
                     <tr class="position-row" onclick="selectStock('${pos.symbol}', ${pos.current_price || pos.avg_price})" style="cursor: pointer;">
-                        <td>${formatStockInfo(pos.symbol, 'code')}</td>
-                        <td>${formatStockInfo(pos.name, 'name')}</td>
+                        <td>${pos.symbol}</td>
+                        <td>${pos.name}</td>
                         <td>${showAmounts ? pos.volume : formatNumber(pos.volume)}</td>
                         <td>${showAmounts ? pos.can_use_volume : formatNumber(pos.can_use_volume)}</td>
                         <td>${showAmounts ? pos.frozen_volume : formatNumber(pos.frozen_volume)}</td>
@@ -502,7 +502,7 @@
                         <td>¥${showAmounts ? (pos.current_price || 0).toFixed(2) : formatMoney(pos.current_price || 0).replace('¥', '')}</td>
                         <td>¥${showAmounts ? (pos.avg_price || 0).toFixed(2) : formatMoney(pos.avg_price || 0).replace('¥', '')}</td>
                         <td class="${profitClass}">¥${showAmounts ? profit.toFixed(2) : formatMoney(profit).replace('¥', '')}</td>
-                        <td class="${profitClass}">${formatPercentage(profitRatio)}</td>
+                        <td class="${profitClass}">${showAmounts ? profitRatio.toFixed(2) + '%' : (profitRatio >= 0 ? '+' : '-') + formatMoney(Math.abs(profitRatio)).replace('¥', '') + '%'}</td>
                     </tr>
                 `;
             }).join('');
@@ -523,7 +523,7 @@
             
             if (profitElement && profitRatioElement) {
                 profitElement.textContent = formatMoney(profit);
-                profitRatioElement.textContent = formatPercentage(profitRatio);
+                profitRatioElement.textContent = profitRatio.toFixed(2) + '%';
                 
                 // 设置盈亏颜色
                 const profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
@@ -540,9 +540,7 @@
             positions.forEach(pos => {
                 const option = document.createElement('option');
                 option.value = pos.symbol;
-                const displaySymbol = formatStockInfo(pos.symbol, 'code');
-                const displayShares = showAmounts ? pos.can_use_volume : formatNumber(pos.can_use_volume);
-                option.textContent = `${displaySymbol} (${displayShares}股)`;
+                option.textContent = `${pos.symbol} (${pos.can_use_volume}股)`;
                 option.dataset.shares = pos.can_use_volume;
                 option.dataset.price = pos.current_price || pos.avg_price;
                 sellSelect.appendChild(option);
@@ -714,37 +712,6 @@
             }
             
             return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        // 格式化百分比
-        function formatPercentage(percentage) {
-            if (percentage === undefined || percentage === null) return '--';
-            
-            if (!showAmounts) {
-                // 隐藏模式：根据百分比大小显示不同数量的星号
-                const absPercentage = Math.abs(percentage);
-                if (absAmount >= 50) return '***';
-                if (absAmount >= 10) return '**';
-                return '*%';
-            }
-            
-            return percentage.toFixed(2) + '%';
-        }
-
-        // 格式化股票信息（代码和名称）
-        function formatStockInfo(info, type = 'code') {
-            if (info === undefined || info === null) return '--';
-            
-            if (!showAmounts) {
-                // 隐藏模式：显示星号
-                if (type === 'code') {
-                    return '******'; // 股票代码用6个星号
-                } else {
-                    return '***';
-                }
-            }
-            
-            return info;
         }
 
         // 显示通知

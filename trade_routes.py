@@ -41,9 +41,10 @@ def api_signature_required(f):
             return jsonify({'error': '无效的时间戳格式'}), 401
         
         # 预设的客户端密钥（实际使用时应该从配置文件或数据库中读取）
+        # TODO 这里改成自己的客户端id和秘钥，只要一行就行，随便改，客户端用对应的client字符串和秘钥
         client_secrets = {
-            'qmt_client_001': 'qmt_secret_key_2024_v1',
-            'outer_client_002': 'outer_secret_key_2024_v2'
+            'qmt_client_001': 'qmt_secret_key_zzzz',
+            'outer_client_002': 'qmt_secret_key_zzzz'
         }
         
         if client_id not in client_secrets:
@@ -71,7 +72,7 @@ def api_signature_required(f):
         
         # 验证签名
         if not hmac.compare_digest(signature, expected_signature):
-            log.warning(f"签名验证失败 - Client: {client_id}, Expected: {expected_signature}, Got: {signature}")
+            log.warning(f"签名验证失败 - path:{path} Client: {client_id}, Expected: {expected_signature}, Got: {signature}")
             log.debug(f"签名字符串: {repr(sign_string)}")
             return jsonify({'error': '签名验证失败'}), 401
         
@@ -336,45 +337,128 @@ def trade():
         log.error(error_msg, exc_info=True)
         return jsonify({"error": error_msg}), 500
 
-@trade_bp.route('/outer/trade', methods=['POST'])
+@trade_bp.route('/outer/trade/<operation>', methods=['POST'])
 @api_signature_required
-def outer_trade():
-    """第三方调用的交易接口（使用API密钥验证）"""
+def outer_trade(operation):
+    """第三方调用的交易接口（使用HMAC签名验证）"""
     try:
+        if operation not in ['buy', 'sell']:
+            return jsonify({"error": "操作类型必须是 buy 或 sell"}), 400
+        
         # 获取请求参数
         data = request.get_json()
         if not data:
             log.error("第三方交易请求数据为空")
             return jsonify({"error": "请求数据不能为空"}), 400
         
+        trader_index = data.get('trader_index')
         symbol = data.get('symbol')
         trade_price = data.get('trade_price')
         position_pct = data.get('position_pct')
+        strategy_name = data.get('strategy_name', '外部策略')
+        
+        # 参数验证
+        if trader_index is None or not symbol or trade_price is None or position_pct is None:
+            log.error(f"第三方交易参数不完整: trader_index={trader_index}, symbol={symbol}, trade_price={trade_price}, position_pct={position_pct}")
+            return jsonify({"error": "缺少必要参数: trader_index, symbol, trade_price, position_pct"}), 400
+        
+        # 验证交易器索引
+        if trader_index >= len(traders) or trader_index < 0:
+            log.error(f"无效的交易器索引: {trader_index}")
+            return jsonify({"error": f"无效的交易器索引: {trader_index}"}), 400
+        
+        log.info(f"第三方开始执行{operation}交易: trader_index={trader_index}, symbol={symbol}, trade_price={trade_price}, position_pct={position_pct}, strategy_name={strategy_name}")
+        
+        # 获取指定的交易器
+        trader = traders[trader_index]
+        
+        try:
+            # 根据操作类型执行不同的交易操作
+            if operation == 'buy':
+                result = trader.trade_target_pct(symbol, trade_price, position_pct)
+            else:  # sell
+                result = trader.trade_sell_target_pct(symbol, trade_price, position_pct)
+            
+            log.info(f"第三方调用-交易器{trader_index} {operation}完成: {result}")
+            
+            return jsonify({
+                "message": f"第三方{operation}交易执行完成",
+                "trader_index": trader_index,
+                "operation": operation,
+                "symbol": symbol,
+                "trade_price": trade_price,
+                "position_pct": position_pct,
+                "strategy_name": strategy_name,
+                "result": result,
+                "status": "success"
+            })
+            
+        except Exception as e:
+            error_msg = f"第三方调用-交易器{trader_index}{operation}交易失败: {str(e)}"
+            log.error(error_msg, exc_info=True)
+            return jsonify({
+                "error": error_msg,
+                "trader_index": trader_index,
+                "status": "failed"
+            }), 500
+        
+    except Exception as e:
+        error_msg = f"第三方{operation}交易接口异常: {str(e)}"
+        log.error(error_msg, exc_info=True)
+        return jsonify({"error": error_msg}), 500
+
+
+@trade_bp.route('/outer/trade/batch/<operation>', methods=['POST'])
+@api_signature_required
+def outer_trade_batch(operation):
+    """第三方调用的批量交易接口（使用HMAC签名验证）"""
+    try:
+        if operation not in ['buy', 'sell']:
+            return jsonify({"error": "操作类型必须是 buy 或 sell"}), 400
+        
+        # 获取请求参数
+        data = request.get_json()
+        if not data:
+            log.error("第三方批量交易请求数据为空")
+            return jsonify({"error": "请求数据不能为空"}), 400
+        
+        symbol = data.get('symbol')
+        trade_price = data.get('trade_price')
+        position_pct = data.get('position_pct')
+        strategy_name = data.get('strategy_name', '外部策略')
         
         # 参数验证
         if not symbol or trade_price is None or position_pct is None:
-            log.error(f"第三方交易参数不完整: symbol={symbol}, trade_price={trade_price}, position_pct={position_pct}")
+            log.error(f"第三方批量{operation}交易参数不完整: symbol={symbol}, trade_price={trade_price}, position_pct={position_pct}")
             return jsonify({"error": "缺少必要参数: symbol, trade_price, position_pct"}), 400
         
-        log.info(f"第三方开始执行交易: symbol={symbol}, trade_price={trade_price}, position_pct={position_pct}")
+        log.info(f"第三方开始执行批量{operation}交易: symbol={symbol}, trade_price={trade_price}, position_pct={position_pct}, strategy_name={strategy_name}")
         
         # 执行交易
         results = []
         for i, trader in enumerate(traders):
             try:
-                log.info(f"第三方调用-交易器{i}开始执行交易")
-                result = trader.trade_target_pct(symbol, trade_price, position_pct)
+                log.info(f"第三方调用-交易器{i}开始执行{operation}交易")
+                if operation == 'buy':
+                    result = trader.trade_target_pct(symbol, trade_price, position_pct)
+                else:  # sell
+                    result = trader.trade_sell_target_pct(symbol, trade_price, position_pct)
                 results.append({"trader_index": i, "result": result, "status": "success"})
-                log.info(f"第三方调用-交易器{i}交易完成: {result}")
+                log.info(f"第三方调用-交易器{i}{operation}交易完成: {result}")
             except Exception as e:
-                error_msg = f"第三方调用-交易器{i}交易失败: {str(e)}"
+                error_msg = f"第三方调用-交易器{i}{operation}交易失败: {str(e)}"
                 log.error(error_msg, exc_info=True)
                 results.append({"trader_index": i, "error": error_msg, "status": "failed"})
         
-        log.info(f"第三方调用-所有交易器执行完成，结果: {results}")
-        return jsonify({"message": "第三方交易执行完成", "results": results})
+        log.info(f"第三方调用-所有交易器{operation}执行完成，结果: {results}")
+        return jsonify({
+            "message": f"第三方批量{operation}交易执行完成", 
+            "operation": operation,
+            "strategy_name": strategy_name,
+            "results": results
+        })
         
     except Exception as e:
-        error_msg = f"第三方交易接口异常: {str(e)}"
+        error_msg = f"第三方批量{operation}交易接口异常: {str(e)}"
         log.error(error_msg, exc_info=True)
         return jsonify({"error": error_msg}), 500
