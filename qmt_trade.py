@@ -223,7 +223,7 @@ class MyTradeAPIWrapper:
             }
 
 
-    def get_position(self, available_type=1):
+    def get_position(self, available_type=-2):
         """获取持仓
         available_type: 1：旧持仓，可用量>0 0：新买的，不可卖出 -1：无论新旧持仓都算 -2：无论是否持仓都算
                 account_type	int	账号类型，参见数据字典

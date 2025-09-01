@@ -182,7 +182,20 @@ def get_positions(trader_index):
                 market_value = getattr(pos, 'market_value', 0)
                 avg_price = getattr(pos, 'avg_price', 0)
                 open_price = getattr(pos, 'open_price', 0)
-
+                # log.info(f"持仓信息 - 股票代码: {symbol}, 持仓数量: {volume}, 可用数量: {can_use_volume}, 冻结数量: {frozen_volume}, 市值: {market_value}, 成本价: {avg_price}, 开仓价: {open_price}")
+                
+                # 打印pos对象的所有属性（调试用）
+                # log.debug(f"pos对象类型: {type(pos)}")
+                # log.debug(f"pos对象所有属性: {[attr for attr in dir(pos) if not attr.startswith('_')]}")
+                # pos对象所有属性: ['account_id', 'account_type', 'avg_price', 'can_use_volume', 'direction', 'float_profit', 'frozen_volume', 'instrument_name', 'last_price', 'm_dAvgPrice', 'm_dFloatProfit', 'm_dMarketValue', 'm_dOpenPrice', 'm_nAccountType', 'm_nCanUseVolume', 'm_nDirection', 'm_nFrozenVolume', 'm_nOnRoadVolume', 'm_nVolume', 'm_nYesterdayVolume', 'm_strAccountID', 'm_strStockCode', 'market_value', 'on_road_volume', 'open_date', 'open_price', 'position_profit', 'profit_rate', 'secu_account', 'stock_code', 'volume', 'yesterday_volume']
+                # for attr in dir(pos):
+                #     if not attr.startswith('_'):
+                #         try:
+                #             value = getattr(pos, attr)
+                #             if not callable(value):
+                #                 log.debug(f"pos.{attr} = {value} (类型: {type(value)})")
+                #         except Exception as e:
+                #             log.debug(f"获取pos.{attr}失败: {e}")
                 # 如果market_value为0，尝试用volume * avg_price计算
                 if market_value == 0 and volume > 0 and avg_price > 0:
                     market_value = volume * avg_price
