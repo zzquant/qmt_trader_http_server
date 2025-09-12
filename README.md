@@ -94,17 +94,13 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-4. **配置QMT路径**
-编辑 `app.py` 文件，修改QMT安装路径：
-```python
-traders = [
-    MyTradeAPIWrapper("你的账户ID", 1001, "账户名称", 
-                     qmtpath=r"你的QMT安装路径\userdata_mini")
-]
-```
+4. **配置环境变量**
+根据 `.env.example` 文件中的内容作为示例，创建 `.env` 文件并修改其中配置
+
 
 5. **配置xtquant模块**
 从QMT安装目录复制xtquant相关文件到Python环境中，或按照QMT官方文档配置。
+
 
 6. **启动应用**
 ```bash

@@ -10,7 +10,7 @@ QMT交易系统统一配置文件
 - QMT路径配置
 - 服务器配置
 """
-
+import json
 import os
 from datetime import timedelta
 from typing import Dict, List, Any
@@ -128,29 +128,13 @@ class Config:
         self.api = APIConfig(
             signature_timeout=int(os.getenv('API_SIGNATURE_TIMEOUT', '300')),
             client_secrets={
-                'qmt_client_001': os.getenv('QMT_CLIENT_001_SECRET', 'qmt_secret_key_zzzz'),
-                'outer_client_002': os.getenv('OUTER_CLIENT_002_SECRET', 'qmt_secret_key_zzzz')
+                os.getenv('QMT_CLIENT_ACCOUNT', 'qmt_client_001'): os.getenv('QMT_CLIENT_SECRET', 'qmt_secret_key_zzzz'),
+                os.getenv('OUTER_CLIENT_ACCOUNT', 'outer_client_002'): os.getenv('OUTER_CLIENT_SECRET', 'qmt_secret_key_zzzz')
             }
         )
         
         # 交易账户配置
-        self.traders = [
-            TraderConfig(
-                account_id="99007036",
-                account_type=1001,
-                account_name="账户1",
-                qmt_path=r"D:\迅投极速策略交易系统交易终端 大同证券QMT实盘\userdata_mini",
-                enabled=True
-            ),
-            # 可以添加更多账户
-            # TraderConfig(
-            #     account_id="38800001476301",
-            #     account_type=1001,
-            #     account_name="账户2",
-            #     qmt_path=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\userdata_mini",
-            #     enabled=False
-            # ),
-        ]
+        self.traders = [TraderConfig(**cfg) for cfg in eval(os.getenv("TRADER_CONFIGS", "[]"))]
 
         # 钉钉机器人配置
         self.dingtalk = DingBotConfig()
