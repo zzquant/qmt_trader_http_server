@@ -16,6 +16,19 @@ log = get_logger(__name__)
 config = get_config()
 dingbot = DingTalkBot(config.dingtalk.access_token, config.dingtalk.secret)
 
+ORDER_STATUS_MAP = {
+    48: "未报",
+    49: "待报",
+    50: "已报",
+    51: "已报待撤",
+    52: "部成待撤",
+    53: "部撤",
+    54: "已撤",
+    55: "部成",
+    56: "已成",
+    57: "废单",
+    255: "未知",
+}
 
 
 class MyXtQuantTraderCallback(XtQuantTraderCallback):
@@ -122,7 +135,7 @@ class MyTradeAPIWrapper:
         self.account_id = account_id  # 账号id，对应你的交易账号id
         self.quant_code = quant_code  # 策略名称，用于区分多个策略
         self.nick_name = nick_name  # 账号名称，用于区分多个账号
-        # 如果没有提供qmtpath，使用默认的C盘路径
+        # 如果没有提供qmtpath，使用默认的D盘路径
         if qmtpath is None:
             qmtpath = r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\userdata_mini"
         self.path = qmtpath
@@ -171,12 +184,12 @@ class MyTradeAPIWrapper:
         send_msg(msg)
         sys.exit('链接失败，程序即将退出 %d' % connect_result)
 
-    def trade_target_pct(self, symbol, cur_price, pct_target=0.1, pricetype=0, record=1):
+    def trade_target_pct(self, symbol, cur_price, pct_target=0.1, price_type=0, record=1):
         """指定仓位买入
         symbol: 股票代码
         cur_price: 当前价格
         pct_target: 仓位比例
-        pricetype: 0：限价
+        price_type: 0：限价
         """
         for _ in range(3):
             try:
@@ -186,7 +199,9 @@ class MyTradeAPIWrapper:
                 value = total_value * pct_target
                 if value > available_cash:
                     value = available_cash
-                return self.trade_buy(symbol, cur_price, value, pricetype, record)
+                result = self.trade_buy(symbol, cur_price, value, price_type, record)
+                send_msg(result)
+                return result
             except Exception as e:
                 self.connect_trade_api()  # 重新连接TradeAPI
                 log.error(traceback.format_exc())
@@ -212,10 +227,15 @@ class MyTradeAPIWrapper:
         symbol = symbol_convert(symbol)
         _p = self.get_position()
         if symbol in _p:
-            order_num = _p[symbol]['can_use_volume']
+            if hasattr(_p[symbol], 'can_use_volume'):
+                order_num = _p[symbol].can_use_volume
+            else:
+                order_num = _p[symbol].get('can_use_volume', 0)
             order_num_sell = order_num * pct_target
             order_num_sell = int(order_num_sell / 100) * 100
-            return self.trade_sell(symbol, cur_price, order_num_sell)
+            result = self.trade_sell(symbol, cur_price, order_num_sell)
+            send_msg(result)
+            return result
         else:
             return {
                 'success': False,
@@ -226,7 +246,6 @@ class MyTradeAPIWrapper:
                 'order_result': None,
                 'message': f'未持有该股票: {symbol}'
             }
-
 
     def get_position(self, available_type=-2):
         """获取持仓
@@ -361,7 +380,7 @@ class MyTradeAPIWrapper:
                 log.info(f"Error get_portfolio: {e}")
                 self.connect_trade_api()  # 重新连接TradeAPI
 
-    def trade_buy(self, symbol, cur_price, value, pricetype=0, record=1):
+    def trade_buy(self, symbol, cur_price, value, price_type=0, record=1):
         try:
             strategy_name = f"quant_{self.quant_code}"
             _portfolio = self.get_portfolio()
@@ -374,36 +393,7 @@ class MyTradeAPIWrapper:
             if order_num > 0:
                 for _ in range(3):
                     try:
-                        if pricetype == 0:
-                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                       xtconstant.FIX_PRICE, cur_price,
-                                                       strategy_name)  # 限价单 # 要排板和固定位置挂单，不能用自动撤单函数
-                        elif pricetype == 3:  # 最新价下单。当pricetype为1－13时，price表示pricetype指定价格的浮动价，最终下单委托价格pricetype指定价格+price，若最终价格大于涨停价，最终价格取涨停价 ， 若小于跌停价，最终价格取跌停价
-                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                       xtconstant.LATEST_PRICE, cur_price, strategy_name)
-                        elif pricetype == 21:  # 当pricetype为21时，买入下单时会紧贴价格笼子上沿，卖出下单时会紧贴价格笼子下沿
-                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                       xtconstant.LATEST_PRICE, cur_price, strategy_name)
-                        elif pricetype == 17:  # 当pricetype为17时，price表示市价类型，对于沪深有不同的含义。上证：1-五档即成剩撤，2-五档即成剩转限，3-本方最优，4-对手方最优；深证：1-对手方最优，2-本方最优，3-即成剩撤，4-五档即成剩撤，5-全额成交或撤
-                            if symbol[-2:] == "SH":
-                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                           xtconstant.MARKET_SH_CONVERT_5_LIMIT, cur_price,
-                                                           strategy_name)
-                            else:
-                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                           xtconstant.MARKET_SZ_CONVERT_5_CANCEL, cur_price,
-                                                           strategy_name)
-                        
-                        # 返回成功结果
-                        return {
-                            'success': True,
-                            'symbol': symbol,
-                            'order_num': order_num,
-                            'price': cur_price,
-                            'value': order_num * cur_price,
-                            'order_result': order_result,
-                            'message': f'买入订单提交成功: {symbol} {order_num}股 @{cur_price}'
-                        }
+                        return self.order_dif_type(cur_price, order_num, price_type, strategy_name, symbol)
                     except Exception as e:
                         msg = f"{self.account_id} order retry {_} TradeAPI Error"
                         send_msg(msg)
@@ -441,7 +431,7 @@ class MyTradeAPIWrapper:
                         'order_num': 0,
                         'price': cur_price,
                         'error': 'Insufficient funds',
-                        'message': f'指定仓位资金不足: 最低100股需要:{cur_price*100:.2f}, 当前可用:{available_cash}'
+                        'message': f'指定仓位资金不足: 最低100股需要:{cur_price * 100:.2f}, 当前可用:{available_cash}'
                     }
 
         except Exception as e:
@@ -455,7 +445,79 @@ class MyTradeAPIWrapper:
                 'message': f'买入操作异常: {str(e)}'
             }
 
-    def trade_buy_shares(self, symbol, cur_price, shares, pricetype=0, record=1):
+    def order_dif_type(self, cur_price, order_num, price_type, strategy_name, symbol):
+        """
+        根据不同的价格类型进行下单，并对非限价单同步查询成交结果
+
+        Args:
+            cur_price (float): 当前价格 (限价单时使用)
+            order_num (int): 委托数量
+            price_type (int): 价格类型 (0:限价, 1:最新价, 2:最优五档即时成交剩余撤销, 3:本方最优, 5:对方最优)
+            strategy_name (str): 策略名称
+            symbol (str): 证券代码，格式如 '600000.SH' 或 '000001.SZ'
+
+        Returns:
+            dict: 包含下单和成交结果信息的字典
+        """
+        order_result = None
+        price_type_map = {
+            # 指定价格下单
+            0: (xtconstant.FIX_PRICE, cur_price),
+            # 最新价下单
+            1: (xtconstant.LATEST_PRICE, 0),
+            # 最优五档即时成交剩余撤销
+            2: (
+                xtconstant.MARKET_SH_CONVERT_5_CANCEL if symbol.endswith(
+                    "SH") else xtconstant.MARKET_SZ_CONVERT_5_CANCEL,
+                0),
+            # 本方最优价格委托，买入时买一 卖出时卖一
+            3: (xtconstant.MARKET_MINE_PRICE_FIRST, 0),
+            # 对方最优价格委托，买入时卖一 卖出时买一
+            5: (xtconstant.MARKET_PEER_PRICE_FIRST, 0)
+        }
+
+        if price_type not in price_type_map:
+            return {
+                'success': False,
+                'message': f'错误：不支持的价格类型 {price_type}'
+            }
+
+        order_price_type, order_price = price_type_map[price_type]
+
+        # 统一的下单逻辑
+        try:
+            order_result = self.trade_api.order_stock(
+                self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                order_price_type, order_price, strategy_name
+            )
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'下单时发生异常: {e}'
+            }
+
+        # 检查基本的下单响应
+        if not order_result or order_result == -1:
+            return {
+                'success': False,
+                'symbol': symbol,
+                'order_num': order_num,
+                'price': cur_price,
+                'message': f'买入订单提交失败: {symbol} {order_num}股 @{cur_price}'
+            }
+
+        # 返回限价单的成功结果
+        return {
+            'success': True,
+            'symbol': symbol,
+            'order_num': order_num,
+            'price': cur_price,
+            'value': order_num * cur_price,  # 注意：这是委托价值，非成交价值
+            'order_id': order_result,
+            'message': f'买入限价单提交成功: {symbol} {order_num}股 @{cur_price}, OrderID: {order_result}'
+        }
+
+    def trade_buy_shares(self, symbol, cur_price, shares, price_type=0, record=1):
         """按固定股数买入股票"""
         try:
             strategy_name = f"quant_{self.quant_code}"
@@ -488,29 +550,12 @@ class MyTradeAPIWrapper:
             if order_num > 0:
                 for _ in range(3):
                     try:
-                        if pricetype == 0:
-                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                       xtconstant.FIX_PRICE, cur_price, strategy_name)
-                        elif pricetype == 3:
-                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                       xtconstant.LATEST_PRICE, cur_price, strategy_name)
-                        elif pricetype == 21:
-                            order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                       xtconstant.LATEST_PRICE, cur_price, strategy_name)
-                        elif pricetype == 17:
-                            if symbol[-2:] == "SH":
-                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                           xtconstant.MARKET_SH_CONVERT_5_LIMIT, cur_price,
-                                                           strategy_name)
-                            else:
-                                order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_BUY, order_num,
-                                                           xtconstant.MARKET_SZ_CONVERT_5_CANCEL, cur_price,
-                                                           strategy_name)
-                        
+                        order_result = self.order_dif_type(cur_price, order_num, price_type, strategy_name, symbol)
+
                         if record == 1:
                             # self._record_trade(symbol, order_num, cur_price)
                             pass
-                        
+
                         return {
                             'success': True,
                             'symbol': symbol,
@@ -567,10 +612,11 @@ class MyTradeAPIWrapper:
         value = self.get_portfolio().cash
         order_num = math.floor(value / 100 / 10) * 10
         if order_num > 0:
-            self.trade_api.order("131810.SZ", -order_num, 1)
+            self.trade_api.order_stock(self.acc, "131810.SZ", xtconstant.STOCK_BUY, order_num, xtconstant.LATEST_PRICE,
+                                       0)
             # self.trade_api.order("131990.SH", -order_num, 1)
 
-    def trade_sell(self, symbol, cur_price, order_num, pricetype=11):
+    def trade_sell(self, symbol, cur_price, order_num, price_type=11):
         """执行卖出操作，并更新持仓"""
         try:  # 不让账户相互之间有冲突，比如登录失效不影响下面的
             log.info("%s sell %s %s %s" % (self.account_id, symbol, cur_price, order_num))
@@ -578,22 +624,27 @@ class MyTradeAPIWrapper:
             _p = self.get_position()
             if symbol in _p:
                 if order_num is None or order_num == 0:
-                    order_num = _p[symbol]['can_use_volume']
+                    if hasattr(_p[symbol], 'can_use_volume'):
+                        order_num = _p[symbol].can_use_volume
+                    else:
+                        order_num = _p[symbol].get('can_use_volume', 0)
                 log.info("%s: do sell %s %s %s" % (self.account_id, symbol, cur_price, order_num))
                 if order_num >= 100:
                     value = order_num * cur_price
-                    if pricetype == 0:
+                    if price_type == 0:
                         # self.trade_api.order(symbol, -order_num, price=cur_price)
                         order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
-                                                   xtconstant.FIX_PRICE, cur_price, f"qunat_{self.quant_code}")
+                                                                  xtconstant.FIX_PRICE, cur_price,
+                                                                  f"qunat_{self.quant_code}")
                     else:
-                        # 超过spread不再下单，repricetype=11 买三价，12买四，13买五，
-                        # 超过spread不再下单，repricetype不传，按照reprice下单
-                        # rechase_api = self.trade_api.NEW_RECHASE(reprice=0, spread=0.2, entrustcnt=5, revoke=True, timeout=6, repricetype=11)
+                        # 超过spread不再下单，reprice_type=11 买三价，12买四，13买五，
+                        # 超过spread不再下单，reprice_type不传，按照reprice下单
+                        # rechase_api = self.trade_api.NEW_RECHASE(reprice=0, spread=0.2, entrustcnt=5, revoke=True, timeout=6, reprice_type=11)
                         # rechase_api.order(symbol, -order_num, price=cur_price)
                         order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
-                                                   xtconstant.FIX_PRICE, cur_price, f"qunat_{self.quant_code}")
-                    
+                                                                  xtconstant.FIX_PRICE, cur_price,
+                                                                  f"qunat_{self.quant_code}")
+
                     return {
                         'success': True,
                         'symbol': symbol,
@@ -643,18 +694,56 @@ class MyTradeAPIWrapper:
         self.cancel_all_orders(xtconstant.STOCK_BUY)
 
     def cancel_all_orders(self, sideType):
-        self.trade_api.get_orders()
+        self.query_orders()
         for order in self.trade_api.query_stock_orders(self.acc, cancelable_only=True):
-            symbol = order['stock_code']
-            self.reload_trade_records(symbol)
             order_id = order['order_id']
             status = order['order_status']
             order_type = order['order_type']
-            if order_type == sideType:
-                if status in [xtconstant.ORDER_REPORTED, xtconstant.ORDER_PART_SUCC]:
-                    log.info("cancel_order %s" % (order))
-                    self.trade_api.cancel_order_stock(self.acc, order_id)
+            if order_type == sideType and status in [xtconstant.ORDER_REPORTED, xtconstant.ORDER_PART_SUCC]:
+                log.info("cancel_order %s" % (order))
+                send_msg(f"撤单 {self.account_id} {order}")
+                self.trade_api.cancel_order_stock(self.acc, order_id)
 
+    def query_orders(self, cancelable_only=False):
+        """
+        查询委托单
+        status: 委托状态，参见数据字典，默认查询所有状态的委托单
+        """
+        orders = self.trade_api.query_stock_orders(self.acc, cancelable_only)
+        return [
+            {
+                'order_id': order.order_id,
+                'symbol': order.stock_code,
+                'side': 'buy' if order.order_type == xtconstant.STOCK_BUY else 'sell',
+                'status': order.order_status,
+                'm_status': ORDER_STATUS_MAP.get(order.order_status),
+                'volume': order.order_volume,
+                'time': order.order_time,
+                'price': order.price,
+                'price_type': order.price_type,
+                'traded_volume': order.traded_volume,
+                'traded_price': order.traded_price,
+                'strategy_name': order.strategy_name
+            }
+            for order in orders
+        ]
+
+    def query_order(self, order_id):
+        order = self.trade_api.query_stock_order(self.acc, order_id)
+        return {
+            'order_id': order.order_id,
+            'symbol': order.stock_code,
+            'side': 'buy' if order.order_type == xtconstant.STOCK_BUY else 'sell',
+            'status': order.order_status,
+            'm_status': ORDER_STATUS_MAP.get(order.order_status),
+            'volume': order.order_volume,
+            'time': order.order_time,
+            'price': order.price,
+            'price_type': order.price_type,
+            'traded_volume': order.traded_volume,
+            'traded_price': order.traded_price,
+            'strategy_name': order.strategy_name
+        }
 
 
 def send_msg(msg):
