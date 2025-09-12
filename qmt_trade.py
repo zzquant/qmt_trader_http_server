@@ -696,9 +696,9 @@ class MyTradeAPIWrapper:
     def cancel_all_orders(self, sideType):
         self.query_orders()
         for order in self.trade_api.query_stock_orders(self.acc, cancelable_only=True):
-            order_id = order['order_id']
-            status = order['order_status']
-            order_type = order['order_type']
+            order_id = order.order_id
+            status = order.order_status
+            order_type = order.order_type
             if order_type == sideType and status in [xtconstant.ORDER_REPORTED, xtconstant.ORDER_PART_SUCC]:
                 log.info("cancel_order %s" % (order))
                 send_msg(f"撤单 {self.account_id} {order}")
