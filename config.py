@@ -104,6 +104,13 @@ class APIConfig:
         return self.client_secrets.get(client_id, '')
 
 
+@dataclass
+class DingBotConfig:
+    access_token: str = os.getenv('DINGTALK_ACCESS_TOKEN', '')
+    secret: str = os.getenv('DINGTALK_SECRET', '')
+    keyword: str = os.getenv('DINGTALK_KEYWORD', '')
+
+
 class Config:
     """主配置类"""
     
@@ -144,7 +151,10 @@ class Config:
             #     enabled=False
             # ),
         ]
-        
+
+        # 钉钉机器人配置
+        self.dingtalk = DingBotConfig()
+
         # 从环境变量覆盖配置
         self._load_from_env()
     

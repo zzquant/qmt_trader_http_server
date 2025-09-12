@@ -7,10 +7,15 @@ import symbol_util
 from xtquant import xtconstant
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
 from xtquant.xttype import StockAccount
+from dingtalk_helper import DingTalkBot
 from logger_config import get_logger
+from config import get_config
 
 # 设置日志
 log = get_logger(__name__)
+config = get_config()
+dingbot = DingTalkBot(config.dingtalk.access_token, config.dingtalk.secret)
+
 
 
 class MyXtQuantTraderCallback(XtQuantTraderCallback):
@@ -651,9 +656,10 @@ class MyTradeAPIWrapper:
                     self.trade_api.cancel_order_stock(self.acc, order_id)
 
 
-def send_msg(msg, group="达摩院"):
-    # TODO 接入自己的消息通知，比如前面作业任务：发送消息到钉钉
-    log.info(f"send msg to {group}: {msg}")
+
+def send_msg(msg):
+    dingbot.send_text(msg, at_all=False)
+    log.info(f"dingbot send msg: {msg}")
 
 
 def symbol_convert(stock_code):
