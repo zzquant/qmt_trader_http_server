@@ -700,9 +700,28 @@ class MyTradeAPIWrapper:
             status = order.order_status
             order_type = order.order_type
             if order_type == sideType and status in [xtconstant.ORDER_REPORTED, xtconstant.ORDER_PART_SUCC]:
-                log.info("cancel_order %s" % (order))
-                send_msg(f"撤单 {self.account_id} {order}")
-                self.trade_api.cancel_order_stock(self.acc, order_id)
+                log.info("cancel_order %s" % (order_id))
+                result = self.trade_api.cancel_order_stock(self.acc, order_id)
+                send_msg(f"撤单 {self.account_id} {order} {'成功' if result == 0 else '失败'}")
+
+    def cancel_order(self, order_id):
+        """
+        撤单
+        order_id: 委托单号
+        """
+        result = self.trade_api.cancel_order_stock(self.acc, order_id)
+        if result == 0:
+            return {
+                'success': True,
+                'order_id': order_id,
+                'message': f'撤单成功: OrderID {order_id}'
+            }
+        else:
+            return {
+                'success': False,
+                'order_id': order_id,
+                'message': f'撤单失败: OrderID {order_id}'
+            }
 
     def query_orders(self, cancelable_only=False):
         """
