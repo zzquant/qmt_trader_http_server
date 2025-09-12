@@ -227,6 +227,7 @@ python app.py
 - **v1.1.0**：添加用户认证系统
 - **v1.2.0**：优化盈亏计算逻辑
 - **v1.3.0**：完善Web界面和API
+- **v1.4.0**：API新增和问题修复
 
 ## 许可证
 
@@ -235,9 +236,8 @@ python app.py
 ## 联系方式
 
 如有问题或建议，请通过以下方式联系：
-- 📧 Email: [your-email@example.com]
+- 🔗 website: [https://www.zizizaizai.com/contact]
 - 💬 Issues: [GitHub Issues]
-- 📱 QQ群: [交流群号]
 
 ---
 
