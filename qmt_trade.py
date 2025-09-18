@@ -515,7 +515,7 @@ class MyTradeAPIWrapper:
             'price': cur_price,
             'value': order_num * cur_price,  # 注意：这是委托价值，非成交价值
             'order_id': order_result,
-            'message': f'买入限价单提交成功: {symbol} {order_num}股 @{cur_price}, OrderID: {order_result}'
+            'message': f'{"买入" if order_type == xtconstant.STOCK_BUY else "卖出"}限价单提交成功: {symbol} {order_num}股 @{cur_price}, OrderID: {order_result}'
         }
 
     def trade_buy_shares(self, symbol, cur_price, shares, price_type=0, record=1):
@@ -557,15 +557,7 @@ class MyTradeAPIWrapper:
                             # self._record_trade(symbol, order_num, cur_price)
                             pass
 
-                        return {
-                            'success': True,
-                            'symbol': symbol,
-                            'order_num': order_num,
-                            'price': cur_price,
-                            'value': value,
-                            'order_result': order_result,
-                            'message': f'买入订单提交成功: {symbol} {order_num}股 价格{cur_price}'
-                        }
+                        return order_result
                     except Exception as e:
                         msg = f"{self.account_id} order retry {_} TradeAPI Error"
                         send_msg(msg)
@@ -634,15 +626,7 @@ class MyTradeAPIWrapper:
                     value = order_num * cur_price
                     order_result = self.order_dif_type(cur_price, order_num, price_type, f"quant_{self.quant_code}", symbol, xtconstant.STOCK_SELL)
 
-                    return {
-                        'success': True,
-                        'symbol': symbol,
-                        'order_num': order_num,
-                        'price': cur_price,
-                        'value': value,
-                        'order_result': order_result,
-                        'message': f'卖出订单提交成功: {symbol} {order_num}股 价格{cur_price}'
-                    }
+                    return order_result
                 else:
                     log.info("order_num error %s %s" % (symbol, order_num))
                     return {
