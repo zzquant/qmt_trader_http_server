@@ -445,7 +445,7 @@ class MyTradeAPIWrapper:
                 'message': f'买入操作异常: {str(e)}'
             }
 
-    def order_dif_type(self, cur_price, order_num, price_type, strategy_name, symbol, order_type=xtconstant.BUY):
+    def order_dif_type(self, cur_price, order_num, price_type, strategy_name, symbol, order_type=xtconstant.STOCK_BUY):
         """
         根据不同的价格类型进行下单
 
@@ -455,7 +455,7 @@ class MyTradeAPIWrapper:
             price_type (int): 价格类型 (0:限价, 1:最新价, 2:最优五档即时成交剩余撤销, 3:本方最优, 5:对方最优)
             strategy_name (str): 策略名称
             symbol (str): 证券代码，格式如 '600000.SH' 或 '000001.SZ'
-            order_type: int: 订单类型，xtconstant.BUY 或 xtconstant.SELL
+            order_type: int: 订单类型，xtconstant.STOCK_BUY 或 xtconstant.STOCK_SELL
 
         Returns:
             dict: 包含下单结果的字典
@@ -632,7 +632,7 @@ class MyTradeAPIWrapper:
                 log.info("%s: do sell %s %s %s" % (self.account_id, symbol, cur_price, order_num))
                 if order_num >= 100:
                     value = order_num * cur_price
-                    order_result = self.order_dif_type(cur_price, order_num, price_type, f"quant_{self.quant_code}", symbol, xtconstant.SELL)
+                    order_result = self.order_dif_type(cur_price, order_num, price_type, f"quant_{self.quant_code}", symbol, xtconstant.STOCK_SELL)
 
                     return {
                         'success': True,
