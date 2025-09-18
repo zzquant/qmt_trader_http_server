@@ -430,6 +430,7 @@ def outer_trade(operation):
     trader_index = data.get('trader_index')
     symbol = data.get('symbol')
     trade_price = data.get('trade_price')
+    price_type = data.get('price_type', 0)
     position_pct = data.get('position_pct')
     strategy_name = data.get('strategy_name', '外部策略')
 
@@ -453,9 +454,9 @@ def outer_trade(operation):
         try:
             log.info(f"第三方调用-交易器{i}开始执行{operation}交易")
             if operation == 'buy':
-                result = trader.trade_target_pct(symbol, trade_price, position_pct)
+                result = trader.trade_target_pct(symbol, trade_price, position_pct, price_type)
             else:  # sell
-                result = trader.trade_sell_target_pct(symbol, trade_price, position_pct)
+                result = trader.trade_sell_target_pct(symbol, trade_price, position_pct, price_type)
             results.append({"trader_index": i, "result": result, "status": "success"})
             log.info(f"第三方调用-交易器{i}{operation}交易完成: {result}")
         except Exception as e:

@@ -217,7 +217,7 @@ class MyTradeAPIWrapper:
                     }
                 continue
 
-    def trade_sell_target_pct(self, symbol, cur_price, pct_target):
+    def trade_sell_target_pct(self, symbol, cur_price, pct_target, price_type=0):
         """指定仓位卖出
         symbol: 股票代码
         cur_price: 当前价格
@@ -233,7 +233,7 @@ class MyTradeAPIWrapper:
                 order_num = _p[symbol].get('can_use_volume', 0)
             order_num_sell = order_num * pct_target
             order_num_sell = int(order_num_sell / 100) * 100
-            result = self.trade_sell(symbol, cur_price, order_num_sell)
+            result = self.trade_sell(symbol, cur_price, order_num_sell, price_type)
             send_msg(result)
             return result
         else:
@@ -445,9 +445,9 @@ class MyTradeAPIWrapper:
                 'message': f'买入操作异常: {str(e)}'
             }
 
-    def order_dif_type(self, cur_price, order_num, price_type, strategy_name, symbol):
+    def order_dif_type(self, cur_price, order_num, price_type, strategy_name, symbol, order_type=xtconstant.BUY):
         """
-        根据不同的价格类型进行下单，并对非限价单同步查询成交结果
+        根据不同的价格类型进行下单
 
         Args:
             cur_price (float): 当前价格 (限价单时使用)
@@ -455,9 +455,10 @@ class MyTradeAPIWrapper:
             price_type (int): 价格类型 (0:限价, 1:最新价, 2:最优五档即时成交剩余撤销, 3:本方最优, 5:对方最优)
             strategy_name (str): 策略名称
             symbol (str): 证券代码，格式如 '600000.SH' 或 '000001.SZ'
+            order_type: int: 订单类型，xtconstant.BUY 或 xtconstant.SELL
 
         Returns:
-            dict: 包含下单和成交结果信息的字典
+            dict: 包含下单结果的字典
         """
         order_result = None
         price_type_map = {
@@ -487,7 +488,7 @@ class MyTradeAPIWrapper:
         # 统一的下单逻辑
         try:
             order_result = self.trade_api.order_stock(
-                self.acc, symbol, xtconstant.STOCK_BUY, order_num,
+                self.acc, symbol, order_type, order_num,
                 order_price_type, order_price, strategy_name
             )
         except Exception as e:
@@ -616,7 +617,7 @@ class MyTradeAPIWrapper:
                                        0)
             # self.trade_api.order("131990.SH", -order_num, 1)
 
-    def trade_sell(self, symbol, cur_price, order_num, price_type=11):
+    def trade_sell(self, symbol, cur_price, order_num, price_type=0):
         """执行卖出操作，并更新持仓"""
         try:  # 不让账户相互之间有冲突，比如登录失效不影响下面的
             log.info("%s sell %s %s %s" % (self.account_id, symbol, cur_price, order_num))
@@ -631,19 +632,7 @@ class MyTradeAPIWrapper:
                 log.info("%s: do sell %s %s %s" % (self.account_id, symbol, cur_price, order_num))
                 if order_num >= 100:
                     value = order_num * cur_price
-                    if price_type == 0:
-                        # self.trade_api.order(symbol, -order_num, price=cur_price)
-                        order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
-                                                                  xtconstant.FIX_PRICE, cur_price,
-                                                                  f"qunat_{self.quant_code}")
-                    else:
-                        # 超过spread不再下单，reprice_type=11 买三价，12买四，13买五，
-                        # 超过spread不再下单，reprice_type不传，按照reprice下单
-                        # rechase_api = self.trade_api.NEW_RECHASE(reprice=0, spread=0.2, entrustcnt=5, revoke=True, timeout=6, reprice_type=11)
-                        # rechase_api.order(symbol, -order_num, price=cur_price)
-                        order_result = self.trade_api.order_stock(self.acc, symbol, xtconstant.STOCK_SELL, order_num,
-                                                                  xtconstant.FIX_PRICE, cur_price,
-                                                                  f"qunat_{self.quant_code}")
+                    order_result = self.order_dif_type(cur_price, order_num, price_type, f"quant_{self.quant_code}", symbol, xtconstant.SELL)
 
                     return {
                         'success': True,
