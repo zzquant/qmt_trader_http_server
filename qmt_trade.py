@@ -605,7 +605,7 @@ class MyTradeAPIWrapper:
         value = self.get_portfolio().cash
         order_num = math.floor(value / 100 / 10) * 10
         if order_num > 0:
-            self.trade_api.order_stock(self.acc, "131810.SZ", xtconstant.STOCK_BUY, order_num, xtconstant.LATEST_PRICE,
+            self.trade_api.order_stock(self.acc, "131810.SZ", xtconstant.STOCK_SELL, order_num, xtconstant.LATEST_PRICE,
                                        0)
             # self.trade_api.order("131990.SH", -order_num, 1)
 
