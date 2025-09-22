@@ -1,9 +1,10 @@
-from flask import Flask, redirect, render_template, request, session, flash, url_for
+from flask import Flask, redirect, render_template, request, session, flash, url_for, jsonify
 from functools import wraps
-from qmt_trade import MyTradeAPIWrapper
+from qmt_trade import MyTradeAPIWrapper, dingbot
 from trade_routes import trade_bp, init_trade_routes
 from logger_config import setup_logging, get_logger
 from config import get_config
+from authentication import api_signature_required
 
 # 获取配置
 config = get_config()
@@ -54,7 +55,7 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+
         if username in config.auth.users and config.auth.users[username] == password:
             session.permanent = True  # 启用永久session
             session['logged_in'] = True
@@ -64,7 +65,7 @@ def login():
         else:
             log.warning(f"用户 {username} 登录失败")
             return render_template('login.html', error='用户名或密码错误')
-    
+
     return render_template('login.html')
 
 @app.route('/config', methods=['GET', 'POST'])
@@ -78,37 +79,37 @@ def config_page():
             config.flask.port = int(request.form.get('flask_port', config.flask.port))
             config.flask.host = request.form.get('flask_host', config.flask.host)
             config.flask.permanent_session_lifetime_days = int(request.form.get('flask_session_lifetime', config.flask.permanent_session_lifetime_days))
-            
+
             # 更新用户认证配置
             for username in config.auth.users.keys():
                 new_password = request.form.get(f'auth_{username}')
                 if new_password:
                     config.auth.users[username] = new_password
-            
+
             # 更新API配置
             config.api.signature_timeout = int(request.form.get('api_signature_timeout', config.api.signature_timeout))
             for client_id in config.api.client_secrets.keys():
                 new_secret = request.form.get(f'api_{client_id}')
                 if new_secret:
                     config.api.client_secrets[client_id] = new_secret
-            
+
             # 更新日志配置
             config.log.level = request.form.get('log_level', config.log.level)
             config.log.log_dir = request.form.get('log_dir', config.log.log_dir)
             config.log.console_output = request.form.get('log_console') == 'true'
             config.log.file_output = request.form.get('log_file') == 'true'
-            
+
             # 保存配置到.env文件
             from config import save_config_to_env_file
             save_config_to_env_file(config)
-            
+
             log.info(f"用户 {session.get('username')} 更新了系统配置")
             flash('配置保存成功！某些更改可能需要重启服务器才能生效。', 'success')
-            
+
         except Exception as e:
             log.error(f"保存配置时发生错误: {str(e)}")
             flash(f'保存配置失败: {str(e)}', 'error')
-    
+
     return render_template('config.html', config=config)
 
 @app.route('/logout')
@@ -124,6 +125,20 @@ def trading_page():
     """交易界面"""
     log.info(f"用户 {session.get('username')} 访问交易页面")
     return render_template('trading.html')
+
+
+@app.route('/send_msg', methods=['POST'])
+@api_signature_required
+def send_msg():
+    """发送钉钉消息接口"""
+    message = request.get_json().get('msg')
+    try:
+        dingbot.send_text(message)
+        log.info(f"发送钉钉消息成功: {message}")
+        return jsonify({'status': 'success', 'message': '消息发送成功'})
+    except Exception as e:
+        log.error(f"发送钉钉消息失败: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 # 添加日志中间件
@@ -156,11 +171,11 @@ def handle_404(e):
 def handle_exception(e):
     from flask import request
     from werkzeug.exceptions import HTTPException
-    
+
     # 如果是HTTP异常且是开发工具相关请求，不记录日志
     if isinstance(e, HTTPException) and any(path in request.path for path in ['@vite', 'favicon.ico', '__webpack']):
         return str(e), e.code
-    
+
     # 记录真正的应用异常
     log.error(f"应用异常: {str(e)}", exc_info=True)
     return "Internal Server Error", 500
