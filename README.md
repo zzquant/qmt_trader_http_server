@@ -269,6 +269,98 @@ curl -X GET http://localhost:9091/qmt/trade/api/positions/0 \
   -H "X-Signature: your_signature"
 ```
 
+### Python客户端调用示例
+
+项目提供了完整的Python客户端调用示例 `qmt_trader_client.py`，包含HMAC签名验证的完整实现。
+
+#### 客户端配置
+
+```python
+# 配置信息
+base_url = "http://yourip:9091"
+client_id = "outer_client_002"
+secret_key = "qmt_secret_key_zzzz"
+```
+
+#### 主要函数
+
+**call_trade() - 通用交易函数**
+```python
+def call_trade(symbol, trade_price, position_pct=0.1, operation='buy', strategy_name="JQ_Q1"):
+    """
+    调用批量交易接口
+    
+    参数:
+        symbol: 股票代码（如 "000001"）
+        trade_price: 交易价格
+        position_pct: 仓位比例（0.1 = 10%）
+        operation: 操作类型（'buy' 或 'sell'）
+        strategy_name: 策略名称（自定义）
+    
+    返回:
+        API响应结果
+    """
+```
+
+**便捷函数**
+```python
+# 买入
+def call_buy(symbol, trade_price, position_pct=0.1, strategy_name="JQ_Q1"):
+    return call_trade(symbol, trade_price, position_pct, 'buy', strategy_name)
+
+# 卖出  
+def call_sell(symbol, trade_price, position_pct=0.1, strategy_name="JQ_Q1"):
+    return call_trade(symbol, trade_price, position_pct, 'sell', strategy_name)
+```
+
+#### 使用示例
+
+```python
+# 导入客户端
+from qmt_trader_client import call_buy, call_sell, call_trade
+
+# 买入平安银行，价格10.50，仓位10%
+result = call_buy("000001", 10.50, 0.1, "我的策略")
+
+# 卖出平安银行，价格11.00，仓位50%
+result = call_sell("000001", 11.00, 0.5, "我的策略")
+
+# 通用调用方式
+result = call_trade(
+    symbol="000001",
+    trade_price=10.50,
+    position_pct=0.1,
+    operation='buy',
+    strategy_name="我的策略"
+)
+```
+
+#### 签名验证机制
+
+客户端自动处理HMAC-SHA256签名验证：
+
+1. **签名字符串构建**：`{method}\n{path}\n{query_string}\n{body}\n{timestamp}\n{client_id}`
+2. **HMAC计算**：使用secret_key对签名字符串进行HMAC-SHA256加密
+3. **请求头设置**：自动添加 `X-Client-ID`、`X-Timestamp`、`X-Signature`
+
+#### 错误处理
+
+```python
+try:
+    result = call_buy("000001", 10.50, 0.1)
+    print(f"交易成功: {result}")
+except Exception as e:
+    print(f"交易失败: {e}")
+```
+
+#### 注意事项
+
+- 确保 `base_url`、`client_id`、`secret_key` 配置正确
+- `symbol` 参数会自动截取前6位作为股票代码
+- `position_pct` 为仓位比例，0.1表示10%仓位
+- 请求会自动生成时间戳和签名
+- 建议在生产环境中将敏感信息（如secret_key）存储在环境变量中
+
 ## 注意事项
 
 ### 安全建议
