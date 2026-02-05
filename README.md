@@ -1,430 +1,286 @@
-# QMT交易HTTP服务器
+<p align="center">
+  <h1 align="center">🚀 QMT Trader HTTP Server</h1>
+  <p align="center">
+    <strong>QMT量化交易HTTP服务 · 远程下单 · 多账户管理</strong>
+  </p>
+  <p align="center">
+    <a href="#-快速开始">快速开始</a> •
+    <a href="#-api接口">API接口</a> •
+    <a href="#-python客户端">Python客户端</a> •
+    <a href="#-配置说明">配置说明</a>
+  </p>
+</p>
 
-基于Flask的QMT（迅投极速交易系统）HTTP API服务器，提供Web界面和RESTful API接口进行量化交易操作。
+---
 
-## 项目简介
+## ✨ 特性
 
-本项目是一个专为QMT交易终端设计的HTTP服务器，通过Web界面和API接口实现远程交易控制。支持多账户管理、实时持仓查询、交易下单、撤单等功能，并提供完善的身份验证和日志记录机制。
+- 🌐 **HTTP API** - 将QMT交易能力封装为RESTful API，支持远程调用
+- 👥 **多账户** - 支持配置多个QMT交易账户，统一管理
+- 🔐 **安全认证** - HMAC-SHA256签名验证，防篡改防重放
+- 📊 **Web界面** - 可视化交易界面，实时持仓和资产查看
+- 🔔 **钉钉通知** - 交易信号自动推送到钉钉群
+- 📝 **完整日志** - 所有交易操作记录在案
 
-## 主要功能
+---
 
-### Web界面功能
-- **用户登录认证** - 支持管理员和交易员两种角色
-- **交易界面** - 实时显示持仓、资产、交易操作
-- **配置管理** - 在线配置交易参数和系统设置
-- **实时数据** - 动态更新持仓和资产信息
-
-### API接口功能
-- **账户管理** - 查询交易账户信息和状态
-- **持仓查询** - 获取实时持仓数据和资产组合
-- **交易下单** - 支持买入、卖出、全仓买入等操作
-- **订单管理** - 查询订单状态、撤单操作
-- **风控功能** - 支持一键撤销买单/卖单
-
-### 安全特性
-- **双重认证** - 支持Web登录和API签名验证
-- **HMAC签名** - API接口使用HMAC-SHA256签名防篡改
-- **时间戳验证** - 防止重放攻击
-- **多客户端支持** - 支持不同客户端的独立密钥管理
-
-## 技术架构
-
-- **后端框架**: Flask 2.3.3
-- **交易接口**: QMT xtquant
-- **数据处理**: pandas, numpy
-- **前端技术**: Bootstrap 5, JavaScript
-- **配置管理**: python-dotenv
-- **日志系统**: Python logging
-- **通知系统**: 钉钉机器人集成
-
-## 项目结构
-
-```
-qmt_trader_http_server/
-├── app.py                 # Flask应用主入口
-├── config.py              # 配置管理模块
-├── qmt_trade.py           # QMT交易接口封装
-├── trade_routes.py        # 交易API路由
-├── authentication.py     # 身份验证模块
-├── logger_config.py       # 日志配置
-├── dingtalk_helper.py     # 钉钉通知助手
-├── symbol_util.py         # 股票代码工具
-├── qmt_data.py           # QMT数据接口
-├── requirements.txt       # 项目依赖
-├── .env.example          # 环境变量示例
-├── templates/            # HTML模板
-│   ├── login.html        # 登录页面
-│   ├── trading.html      # 交易界面
-│   └── config.html       # 配置页面
-└── static/               # 静态资源
-    ├── css/              # 样式文件
-    └── js/               # JavaScript文件
-```
-
-## 安装部署
+## 📦 安装
 
 ### 环境要求
-
-- Python 3.8-3.11
-- QMT交易终端（已安装并配置）
-- Windows操作系统（QMT要求）
+- Windows 系统 (QMT仅支持Windows)
+- Python 3.8 - 3.11
+- QMT交易终端 (已安装配置)
 
 ### 安装步骤
 
-1. **克隆项目**
 ```bash
-git clone <repository-url>
+# 1. 克隆项目
+git clone https://github.com/yourname/qmt_trader_http_server.git
 cd qmt_trader_http_server
-```
 
-2. **创建虚拟环境**
-```bash
-python -m venv venv
-venv\Scripts\activate  # Windows
-```
-
-3. **安装依赖**
-```bash
+# 2. 安装依赖
 pip install -r requirements.txt
-```
 
-4. **配置QMT**
-   - 确保QMT交易终端已正确安装
-   - 从QMT安装目录获取xtquant模块
-   - 配置交易账户信息
-
-5. **环境配置**
-```bash
+# 3. 配置环境变量
 copy .env.example .env
-# 编辑.env文件，配置相关参数
-```
+# 编辑 .env 文件，配置账户信息
 
-6. **启动应用**
-```bash
+# 4. 启动服务
 python app.py
 ```
 
-## 配置说明
+启动后访问：`http://localhost:9091`
 
-### 环境变量配置
+---
 
-在`.env`文件中配置以下参数：
+## 🚀 快速开始
 
-#### Flask应用配置
+### 方式一：Web界面
+
+浏览器访问 `http://localhost:9091`，登录后即可：
+- 查看实时持仓和资产
+- 执行买入/卖出操作
+- 管理订单和撤单
+
+### 方式二：Python客户端 (推荐)
+
+```python
+from qmt_trader_client import call_buy, call_sell
+
+# 买入：平安银行，价格10.50，仓位10%
+call_buy("000001", 10.50, 0.1, "我的策略")
+
+# 卖出：平安银行，价格11.00，仓位50%
+call_sell("000001", 11.00, 0.5, "我的策略")
+```
+
+### 方式三：HTTP API
+
+```bash
+# 查询持仓
+curl http://localhost:9091/qmt/trade/api/positions/0
+
+# 买入股票
+curl -X POST http://localhost:9091/qmt/trade/api/trade \
+  -H "Content-Type: application/json" \
+  -d '{"trader_index": 0, "symbol": "000001", "volume": 100, "price": 10.50}'
+```
+
+---
+
+## 🐍 Python客户端
+
+项目提供开箱即用的Python客户端 `qmt_trader_client.py`：
+
+```python
+from qmt_trader_client import call_buy, call_sell, call_trade
+
+# 配置 (修改 qmt_trader_client.py 中的配置)
+base_url = "http://yourip:9091"
+client_id = "outer_client_002"
+secret_key = "your_secret_key"
+
+# 买入
+call_buy(symbol="000001", trade_price=10.50, position_pct=0.1, strategy_name="策略A")
+
+# 卖出
+call_sell(symbol="000001", trade_price=11.00, position_pct=0.5, strategy_name="策略A")
+
+# 通用调用
+call_trade(
+    symbol="000001",
+    trade_price=10.50,
+    position_pct=0.1,
+    operation='buy',  # 'buy' 或 'sell'
+    strategy_name="策略A"
+)
+```
+
+**参数说明：**
+| 参数 | 说明 | 示例 |
+|:---|:---|:---|
+| `symbol` | 股票代码 | `"000001"` |
+| `trade_price` | 交易价格 | `10.50` |
+| `position_pct` | 仓位比例 (0.1=10%) | `0.1` |
+| `operation` | 操作类型 | `"buy"` 或 `"sell"` |
+| `strategy_name` | 策略名称 (自定义) | `"我的策略"` |
+
+---
+
+## 📡 API接口
+
+### 账户与持仓
+
+| 接口 | 方法 | 描述 |
+|:---|:---|:---|
+| `/qmt/trade/api/accounts` | GET | 获取所有账户 |
+| `/qmt/trade/api/portfolio/{index}` | GET | 获取资产组合 |
+| `/qmt/trade/api/positions/{index}` | GET | 获取持仓列表 |
+
+### 交易操作
+
+| 接口 | 方法 | 描述 |
+|:---|:---|:---|
+| `/qmt/trade/api/trade` | POST | 普通下单 |
+| `/qmt/trade/api/trade/allin` | POST | 全仓买入 |
+| `/qmt/trade/api/sell` | POST | 卖出 |
+
+### 订单管理
+
+| 接口 | 方法 | 描述 |
+|:---|:---|:---|
+| `/qmt/trade/api/orders` | POST | 查询订单 |
+| `/qmt/trade/api/cancel_order` | POST | 撤销订单 |
+| `/qmt/trade/api/cancel_orders/buy` | POST | 撤销所有买单 |
+| `/qmt/trade/api/cancel_orders/sale` | POST | 撤销所有卖单 |
+
+### 外部接口
+
+| 接口 | 方法 | 描述 |
+|:---|:---|:---|
+| `/qmt/trade/api/outer/trade/{operation}` | POST | 外部策略调用 |
+
+> 💡 完整API文档见 [api_signature_example.md](api_signature_example.md)
+
+---
+
+## ⚙️ 配置说明
+
+编辑 `.env` 文件配置以下内容：
+
+### 基础配置
 ```env
-FLASK_SECRET_KEY=your-secret-key-here
-FLASK_DEBUG=false
-FLASK_HOST=0.0.0.0
+FLASK_SECRET_KEY=your-secret-key
 FLASK_PORT=9091
 ```
 
-#### 用户认证配置
+### 用户认证
 ```env
 ADMIN_PASSWORD=your-admin-password
 TRADER_PASSWORD=your-trader-password
 ```
 
-#### API配置
+### API客户端
 ```env
-API_SIGNATURE_TIMEOUT=300
 QMT_CLIENT_ACCOUNT=qmt_client_001
-QMT_CLIENT_SECRET=your-qmt-client-001-secret
-OUTER_CLIENT_ACCOUNT=outer_client_002
-OUTER_CLIENT_SECRET=your-outer-client-002-secret
+QMT_CLIENT_SECRET=your-client-secret
 ```
 
-#### 交易账户配置 (TRADER_CONFIGS)
-
-`TRADER_CONFIGS`是一个JSON字符串，用于配置QMT交易账户信息：
+### QMT账户配置
 
 ```env
 TRADER_CONFIGS="[
   {
     'account_id': '3880000xxxxxx',
     'account_type': 1001,
-    'account_name': '账户1',
+    'account_name': '主账户',
     'qmt_path': 'C:/迅投极速策略交易系统交易终端 华鑫证券QMT实盘/userdata_mini',
     'enabled': True
   }
 ]"
 ```
 
-**参数说明：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `account_id` | string | QMT交易账户ID |
-| `account_type` | int | 账户类型（1001=股票账户） |
-| `account_name` | string | 账户显示名称 |
-| `qmt_path` | string | QMT用户数据目录路径 |
-| `enabled` | boolean | 是否启用该账户 |
-
-**配置注意事项：**
-- `qmt_path`必须指向正确的QMT用户数据目录
-- 路径中的反斜杠需要使用正斜杠或双反斜杠
-- 确保QMT交易终端已正确配置并能正常登录
-- 建议先在QMT终端中测试账户连接
-
-**QMT路径示例：**
-```
-# 华鑫证券
-C:/迅投极速策略交易系统交易终端 华鑫证券QMT实盘/userdata_mini
-
-# 其他券商类似路径格式
-D:/迅投极速策略交易系统交易终端 XX证券QMT实盘/userdata_mini
-```
-
-#### 钉钉通知配置
+### 钉钉通知 (可选)
 ```env
-DINGTALK_ACCESS_TOKEN=your_access_token_here
-DINGTALK_SECRET=your_dingtalk_secret_here
-DINGTALK_KEYWORD=your_keyword_here
+DINGTALK_ACCESS_TOKEN=your_token
+DINGTALK_SECRET=your_secret
 ```
 
-## 使用说明
+> 📖 完整配置说明见 [CONFIG.md](CONFIG.md)
 
-### Web界面使用
+---
 
-1. **访问系统**
-   - 浏览器访问：`http://localhost:9091`
-   - 使用配置的用户名密码登录
+## 🔐 API签名认证
 
-2. **交易操作**
-   - 查看实时持仓和资产信息
-   - 执行买入、卖出操作
-   - 管理订单和撤单
+使用HMAC-SHA256签名保证API安全：
 
-3. **配置管理**
-   - 在线修改交易参数
-   - 调整系统设置
-
-### API接口使用
-
-#### 认证方式
-
-**方式一：Web登录**
-- 先通过Web界面登录，然后可直接调用API
-
-**方式二：HMAC签名**
-- 在请求头中添加签名信息：
 ```
+请求头:
 X-Client-ID: your_client_id
 X-Timestamp: unix_timestamp
 X-Signature: hmac_sha256_signature
 ```
 
-#### 主要API接口
-
-**账户相关**
+签名规则：
 ```
-GET /qmt/trade/api/accounts              # 获取所有账户信息
-GET /qmt/trade/api/portfolio/{index}     # 获取指定账户资产组合
-GET /qmt/trade/api/positions/{index}     # 获取指定账户持仓
+签名字符串 = {method}\n{path}\n{query}\n{body}\n{timestamp}\n{client_id}
+签名 = HMAC-SHA256(secret_key, 签名字符串)
 ```
 
-**交易相关**
-```
-POST /qmt/trade/api/trade               # 普通交易下单
-POST /qmt/trade/api/trade/allin         # 全仓买入
-POST /qmt/trade/api/trade/nhg           # 逆回购交易
-POST /qmt/trade/api/sell                # 卖出操作
-```
-
-**订单管理**
-```
-POST /qmt/trade/api/orders              # 查询订单
-POST /qmt/trade/api/cancel_order        # 撤销指定订单
-POST /qmt/trade/api/cancel_orders/buy   # 撤销所有买单
-POST /qmt/trade/api/cancel_orders/sale  # 撤销所有卖单
-```
-
-**外部接口**
-```
-POST /qmt/trade/api/outer/trade/{operation}  # 外部交易接口
-```
-
-#### 请求示例
-
-**买入股票**
-```bash
-curl -X POST http://localhost:9091/qmt/trade/api/trade \
-  -H "Content-Type: application/json" \
-  -H "X-Client-ID: qmt_client_001" \
-  -H "X-Timestamp: 1640995200" \
-  -H "X-Signature: your_signature" \
-  -d '{
-    "trader_index": 0,
-    "symbol": "000001",
-    "volume": 100,
-    "price": 10.50,
-    "order_type": 23
-  }'
-```
-
-**查询持仓**
-```bash
-curl -X GET http://localhost:9091/qmt/trade/api/positions/0 \
-  -H "X-Client-ID: qmt_client_001" \
-  -H "X-Timestamp: 1640995200" \
-  -H "X-Signature: your_signature"
-```
-
-### Python客户端调用示例
-
-项目提供了完整的Python客户端调用示例 `qmt_trader_client.py`，包含HMAC签名验证的完整实现。
-
-#### 客户端配置
-
-```python
-# 配置信息
-base_url = "http://yourip:9091"
-client_id = "outer_client_002"
-secret_key = "qmt_secret_key_zzzz"
-```
-
-#### 主要函数
-
-**call_trade() - 通用交易函数**
-```python
-def call_trade(symbol, trade_price, position_pct=0.1, operation='buy', strategy_name="JQ_Q1"):
-    """
-    调用批量交易接口
-    
-    参数:
-        symbol: 股票代码（如 "000001"）
-        trade_price: 交易价格
-        position_pct: 仓位比例（0.1 = 10%）
-        operation: 操作类型（'buy' 或 'sell'）
-        strategy_name: 策略名称（自定义）
-    
-    返回:
-        API响应结果
-    """
-```
-
-**便捷函数**
-```python
-# 买入
-def call_buy(symbol, trade_price, position_pct=0.1, strategy_name="JQ_Q1"):
-    return call_trade(symbol, trade_price, position_pct, 'buy', strategy_name)
-
-# 卖出  
-def call_sell(symbol, trade_price, position_pct=0.1, strategy_name="JQ_Q1"):
-    return call_trade(symbol, trade_price, position_pct, 'sell', strategy_name)
-```
-
-#### 使用示例
-
-```python
-# 导入客户端
-from qmt_trader_client import call_buy, call_sell, call_trade
-
-# 买入平安银行，价格10.50，仓位10%
-result = call_buy("000001", 10.50, 0.1, "我的策略")
-
-# 卖出平安银行，价格11.00，仓位50%
-result = call_sell("000001", 11.00, 0.5, "我的策略")
-
-# 通用调用方式
-result = call_trade(
-    symbol="000001",
-    trade_price=10.50,
-    position_pct=0.1,
-    operation='buy',
-    strategy_name="我的策略"
-)
-```
-
-#### 签名验证机制
-
-客户端自动处理HMAC-SHA256签名验证：
-
-1. **签名字符串构建**：`{method}\n{path}\n{query_string}\n{body}\n{timestamp}\n{client_id}`
-2. **HMAC计算**：使用secret_key对签名字符串进行HMAC-SHA256加密
-3. **请求头设置**：自动添加 `X-Client-ID`、`X-Timestamp`、`X-Signature`
-
-#### 错误处理
-
-```python
-try:
-    result = call_buy("000001", 10.50, 0.1)
-    print(f"交易成功: {result}")
-except Exception as e:
-    print(f"交易失败: {e}")
-```
-
-#### 注意事项
-
-- 确保 `base_url`、`client_id`、`secret_key` 配置正确
-- `symbol` 参数会自动截取前6位作为股票代码
-- `position_pct` 为仓位比例，0.1表示10%仓位
-- 请求会自动生成时间戳和签名
-- 建议在生产环境中将敏感信息（如secret_key）存储在环境变量中
-
-## 注意事项
-
-### 安全建议
-- 生产环境务必修改默认密码
-- 妥善保管API密钥，不要提交到版本控制
-- 建议使用HTTPS部署
-- 定期更新密钥和密码
-
-### QMT配置
-- 确保QMT交易终端正常运行
-- 验证账户权限和交易时间
-- 注意交易规则和风控限制
-- 建议先在模拟环境测试
-
-### 系统要求
-- 需要Windows系统运行QMT
-- 确保网络连接稳定
-- 建议配置足够的系统资源
-- 定期备份配置和日志
-
-### 故障排除
-- 检查QMT连接状态
-- 查看日志文件排查错误
-- 验证账户配置正确性
-- 确认交易时间和权限
-
-## 开发说明
-
-### 项目架构
-- 采用Flask蓝图组织路由
-- 使用装饰器实现认证和异常处理
-- 配置类管理所有系统参数
-- 日志系统记录操作和错误
-
-### 扩展开发
-- 新增API接口在`trade_routes.py`中添加
-- 修改前端界面编辑`templates/`目录文件
-- 添加新功能需要相应的认证和日志
-- 遵循现有的错误处理模式
-
-### 测试建议
-- 先在模拟环境测试所有功能
-- 验证API接口的参数和返回值
-- 测试异常情况的处理
-- 确保日志记录完整
-
-## 版本历史
-
-- **v1.0.0** - 初始版本，基本交易功能
-- **v1.1.0** - 添加Web界面和多账户支持
-- **v1.2.0** - 增强安全认证和API接口
-- **v1.3.0** - 优化前端界面和用户体验
-
-## 许可证
-
-本项目仅供学习和研究使用，请遵守相关法律法规和交易所规则。
-
-## 联系方式
-https://quant.zizizaizai.com/contact
-如有问题或建议，请通过以下方式联系：
-- 项目Issues
-- 邮件联系
-- 技术交流群
+> 📖 详细签名说明见 [api_signature_example.md](api_signature_example.md)
 
 ---
 
-**免责声明**: 本软件仅供学习和研究使用，使用者需自行承担交易风险。开发者不对任何交易损失承担责任。
+## ❓ 常见问题
+
+<details>
+<summary><b>Q: QMT连接失败怎么办？</b></summary>
+
+1. 确保QMT交易终端已启动并登录
+2. 检查 `qmt_path` 路径配置是否正确
+3. 验证账户ID和类型配置
+
+</details>
+
+<details>
+<summary><b>Q: API签名验证失败？</b></summary>
+
+1. 检查 client_id 和 secret_key 是否匹配
+2. 确保时间戳误差在5分钟以内
+3. 验证签名字符串构建顺序
+
+</details>
+
+<details>
+<summary><b>Q: 支持哪些券商？</b></summary>
+
+理论上支持所有提供QMT接入的券商，已测试：
+- 华鑫证券
+- 其他支持QMT的券商
+
+</details>
+
+---
+
+## 🛡️ 安全建议
+
+- ⚠️ 生产环境务必修改默认密码
+- ⚠️ 妥善保管API密钥，不要提交到Git
+- ⚠️ 建议使用HTTPS部署
+- ⚠️ 建议先在模拟环境测试
+
+---
+
+## 📄 License
+
+MIT License - 仅供学习研究使用
+
+---
+
+<p align="center">
+  ⚠️ <b>免责声明</b>：本软件仅供学习研究，使用者需自行承担交易风险。
+</p>
+
+<p align="center">
+  ⭐ 如果这个项目对你有帮助，请给它一个 Star！
+</p>

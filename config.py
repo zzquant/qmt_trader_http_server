@@ -134,7 +134,10 @@ class Config:
         )
         
         # 交易账户配置
-        self.traders = [TraderConfig(**cfg) for cfg in eval(os.getenv("TRADER_CONFIGS", "[]"))]
+        trader_configs = os.getenv("TRADER_CONFIGS", "[]")
+        # 使用 ast.literal_eval 安全地解析配置，避免 JSON 解析器对反斜杠的问题
+        import ast
+        self.traders = [TraderConfig(**cfg) for cfg in ast.literal_eval(trader_configs)]
 
         # 钉钉机器人配置
         self.dingtalk = DingBotConfig()
