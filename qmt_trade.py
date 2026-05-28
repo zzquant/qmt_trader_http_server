@@ -1,5 +1,4 @@
 import math
-import sys
 import time
 import traceback
 import pandas as pd
@@ -15,6 +14,11 @@ from config import get_config
 log = get_logger(__name__)
 config = get_config()
 dingbot = DingTalkBot(config.dingtalk.access_token, config.dingtalk.secret)
+
+class TradeConnectionError(Exception):
+    """交易接口连接失败"""
+    pass
+
 
 ORDER_STATUS_MAP = {
     48: "未报",
@@ -169,7 +173,7 @@ class MyTradeAPIWrapper:
                     subscribe_result = xt_trader.subscribe(acc)
                     if subscribe_result != 0:
                         log.info('账号订阅失败 %d' % subscribe_result)
-                        sys.exit('账号订阅失败，程序即将退出 %d' % connect_result)
+                        raise TradeConnectionError('账号订阅失败 %d' % connect_result)
                     else:
                         log.info('账号订阅成功 %d' % subscribe_result)
                     self.trade_api = xt_trader
@@ -182,7 +186,7 @@ class MyTradeAPIWrapper:
         msg = f"Failed to connect TradeAPI for {self.account_id} after 3 attempts"
         log.info(msg)
         send_msg(msg)
-        sys.exit('链接失败，程序即将退出 %d' % connect_result)
+        raise TradeConnectionError('链接失败 %d' % connect_result)
 
     def trade_target_pct(self, symbol, cur_price, pct_target=0.1, price_type=0, record=1):
         """指定仓位买入
@@ -203,7 +207,10 @@ class MyTradeAPIWrapper:
                 send_msg(result)
                 return result
             except Exception as e:
-                self.connect_trade_api()  # 重新连接TradeAPI
+                try:
+                    self.connect_trade_api()  # 重新连接TradeAPI
+                except TradeConnectionError as conn_err:
+                    log.error(f"交易接口重连失败: {conn_err}")
                 log.error(traceback.format_exc())
                 if _ == 2:  # 最后一次重试失败
                     return {
@@ -317,7 +324,10 @@ class MyTradeAPIWrapper:
             except Exception as e:
                 log.info(f"Error getting positions: {e}")
                 time.sleep(1)
-                self.connect_trade_api()  # 重新连接TradeAPI
+                try:
+                    self.connect_trade_api()  # 重新连接TradeAPI
+                except TradeConnectionError as conn_err:
+                    log.error(f"交易接口重连失败: {conn_err}")
 
     def get_position_arr(self, available_type=1):
         stock_arr = []
@@ -378,7 +388,10 @@ class MyTradeAPIWrapper:
                 return self.trade_api.query_stock_asset(self.acc)
             except Exception as e:
                 log.info(f"Error get_portfolio: {e}")
-                self.connect_trade_api()  # 重新连接TradeAPI
+                try:
+                    self.connect_trade_api()  # 重新连接TradeAPI
+                except TradeConnectionError as conn_err:
+                    log.error(f"交易接口重连失败: {conn_err}")
 
     def trade_buy(self, symbol, cur_price, value, price_type=0, record=1):
         try:
@@ -398,7 +411,10 @@ class MyTradeAPIWrapper:
                         msg = f"{self.account_id} order retry {_} TradeAPI Error"
                         send_msg(msg)
                         log.error(msg + f"e: {e}")
-                        self.connect_trade_api()  # 重新连接TradeAPI
+                        try:
+                            self.connect_trade_api()  # 重新连接TradeAPI
+                        except TradeConnectionError as conn_err:
+                            log.error(f"交易接口重连失败: {conn_err}")
                         if _ == 2:  # 最后一次重试失败
                             return {
                                 'success': False,
@@ -562,7 +578,10 @@ class MyTradeAPIWrapper:
                         msg = f"{self.account_id} order retry {_} TradeAPI Error"
                         send_msg(msg)
                         log.error(msg + f"e: {e}")
-                        self.connect_trade_api()
+                        try:
+                            self.connect_trade_api()
+                        except TradeConnectionError as conn_err:
+                            log.error(f"交易接口重连失败: {conn_err}")
                         if _ == 2:  # 最后一次重试失败
                             return {
                                 'success': False,
