@@ -24,15 +24,54 @@ try:
     if env_file_path.exists():
         load_dotenv(env_file_path)
 except ImportError:
-    # 如果没有安装python-dotenv，手动加载.env文件
+    # 如果没有安装python-dotenv，手动加载.env文件（支持多行引号值和多行列表/字典）
+    def _bracket_depth(s):
+        """计算括号深度差（忽略引号内的括号）"""
+        depth, in_quote = 0, None
+        for c in s:
+            if c in ('"', "'") and in_quote is None:
+                in_quote = c
+            elif c == in_quote:
+                in_quote = None
+            elif in_quote is None:
+                depth += (c in '[{') - (c in ']}')
+        return depth
+
     env_file_path = Path(__file__).parent / '.env'
     if env_file_path.exists():
         with open(env_file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    os.environ[key] = value
+            lines = f.readlines()
+
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            i += 1
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            value = value.strip()
+            # 多行引号值: VALUE="...<换行>..."
+            if value and value[0] in ('"', "'") and not value.endswith(value[0]):
+                quote = value[0]
+                parts = [value[1:]]
+                while i < len(lines):
+                    next_line = lines[i].rstrip()
+                    i += 1
+                    if next_line.endswith(quote):
+                        parts.append(next_line[:-1])
+                        break
+                    parts.append(next_line)
+                value = '\n'.join(parts)
+            elif len(value) >= 2 and value[0] in ('"', "'") and value[-1] == value[0]:
+                value = value[1:-1]
+            # 多行列表/字典: VALUE=[... 或 VALUE={...
+            elif value and value[0] in ('[', '{'):
+                while _bracket_depth(value) > 0 and i < len(lines):
+                    next_line = lines[i].rstrip()
+                    i += 1
+                    if next_line.strip() and not next_line.strip().startswith('#'):
+                        value += next_line
+            os.environ[key] = value
 
 
 @dataclass
