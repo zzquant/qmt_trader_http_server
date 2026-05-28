@@ -16,6 +16,7 @@
 ## ✨ 特性
 
 - 🌐 **HTTP API** - 将QMT交易能力封装为RESTful API，支持远程调用
+- 📈 **行情数据** - 历史K线、实时行情快照，支持自动下载缺失数据
 - 👥 **多账户** - 支持配置多个QMT交易账户，统一管理
 - 🔐 **安全认证** - HMAC-SHA256签名验证，防篡改防重放
 - 📊 **Web界面** - 可视化交易界面，实时持仓和资产查看
@@ -154,6 +155,13 @@ call_trade(
 | `/qmt/trade/api/cancel_orders/buy` | POST | 撤销所有买单 |
 | `/qmt/trade/api/cancel_orders/sale` | POST | 撤销所有卖单 |
 
+### 行情数据
+
+| 接口 | 方法 | 描述 |
+|:---|:---|:---|
+| `/qmt/data/api/get_market_data_ex` | GET | 获取历史K线数据（自动下载缺失数据，日K实时更新） |
+| `/qmt/data/api/get_full_tick` | GET | 获取实时行情快照（含五档盘口） |
+
 ### 外部接口
 
 | 接口 | 方法 | 描述 |
@@ -274,6 +282,24 @@ X-Signature: hmac_sha256_signature
 ## 📄 License
 
 MIT License - 仅供学习研究使用
+
+---
+
+## 📋 更新日志
+
+### 2026-05-28 新增行情数据接口
+
+**新增功能：**
+- 📈 **行情数据接口**
+  - `GET /qmt/data/api/get_market_data_ex` - 历史K线数据
+    - 支持股票代码自动转换（如 `510300` → `510300.SH`）
+    - 自动下载缺失的历史数据
+    - 日K数据自动用实时行情更新最后一天
+    - 支持 `json=1` 参数返回JSON对象数组格式
+    - 自动添加 `timeFmt` 字段（YYYYMMDD格式）
+  - `GET /qmt/data/api/get_full_tick` - 实时行情快照
+    - 包含五档盘口数据
+    - 自动添加 `timeFmt` 字段
 
 ---
 
