@@ -16,18 +16,31 @@ log = get_logger(__name__)
 def api_signature_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # 从请求头中获取签名相关信息
-        client_id = request.headers.get('X-Client-ID')
-        timestamp = request.headers.get('X-Timestamp')
-        signature = request.headers.get('X-Signature')
+        config = get_config()
+        api_config = config.api
+
+        # 模式1: URL参数传 client_id + client_secret（浏览器友好）
+        client_id = request.args.get('client_id')
+        client_secret = request.args.get('client_secret')
+        if client_id and client_secret:
+            if not api_config.is_valid_client(client_id):
+                return jsonify({'error': '无效的客户端ID'}), 401
+            if api_config.get_client_secret(client_id) != client_secret:
+                return jsonify({'error': '客户端密钥错误'}), 401
+            log.info(f"URL密钥验证成功 - Client: {client_id}")
+            return f(*args, **kwargs)
+
+        # 模式2: Header或URL参数传完整签名
+        client_id = request.headers.get('X-Client-ID') or request.args.get('client_id')
+        timestamp = request.headers.get('X-Timestamp') or request.args.get('timestamp')
+        signature = request.headers.get('X-Signature') or request.args.get('signature')
 
         if not all([client_id, timestamp, signature]):
             log.warning("缺少必要的签名验证参数")
             return jsonify({'error': '缺少必要的签名验证参数'}), 401
 
-        # 从配置文件获取API配置
-        config = get_config()
-        api_config = config.api
+        timestamp = str(timestamp)
+        signature = str(signature)
 
         # 验证时间戳（防止重放攻击）
         try:
@@ -84,15 +97,30 @@ def login_or_signature_required(f):
             return f(*args, **kwargs)
 
         # ----------- 签名验证 -----------
-        client_id = request.headers.get('X-Client-ID')
-        timestamp = request.headers.get('X-Timestamp')
-        signature = request.headers.get('X-Signature')
+        config = get_config()
+        api_config = config.api
+
+        # 模式1: URL参数传 client_id + client_secret（浏览器友好）
+        client_id = request.args.get('client_id')
+        client_secret = request.args.get('client_secret')
+        if client_id and client_secret:
+            if not api_config.is_valid_client(client_id):
+                return jsonify({'error': '无效的客户端ID'}), 401
+            if api_config.get_client_secret(client_id) != client_secret:
+                return jsonify({'error': '客户端密钥错误'}), 401
+            log.info(f"URL密钥验证成功 - Client: {client_id}")
+            return f(*args, **kwargs)
+
+        # 模式2: Header或URL参数传完整签名
+        client_id = request.headers.get('X-Client-ID') or request.args.get('client_id')
+        timestamp = request.headers.get('X-Timestamp') or request.args.get('timestamp')
+        signature = request.headers.get('X-Signature') or request.args.get('signature')
 
         if not all([client_id, timestamp, signature]):
             return jsonify({'error': '未登录或缺少必要的签名验证参数'}), 401
 
-        config = get_config()
-        api_config = config.api
+        timestamp = str(timestamp)
+        signature = str(signature)
 
         # 验证时间戳
         try:
@@ -127,7 +155,7 @@ def login_or_signature_required(f):
         if not hmac.compare_digest(signature, expected_signature):
             return jsonify({'error': '签名验证失败'}), 401
 
-        # 签名验证成功
+        log.info(f"签名验证成功 - Client: {client_id}")
         return f(*args, **kwargs)
 
     return decorated_function

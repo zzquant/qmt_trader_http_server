@@ -18,21 +18,66 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # 尝试加载.env文件
-try:
-    from dotenv import load_dotenv
+def _load_env_file():
+    """加载.env文件，支持多行值"""
     env_file_path = Path(__file__).parent / '.env'
-    if env_file_path.exists():
+    if not env_file_path.exists():
+        return
+
+    try:
+        from dotenv import load_dotenv
         load_dotenv(env_file_path)
-except ImportError:
-    # 如果没有安装python-dotenv，手动加载.env文件
-    env_file_path = Path(__file__).parent / '.env'
-    if env_file_path.exists():
+    except ImportError:
+        # 如果没有安装python-dotenv，手动加载.env文件（支持多行值）
         with open(env_file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
+            lines = f.readlines()
+
+        current_key = None
+        current_value = []
+        in_multiline = False
+
+        for line in lines:
+            line = line.rstrip('\n')
+
+            # 跳过注释和空行
+            if not line.strip() or line.strip().startswith('#'):
+                if in_multiline:
+                    current_value.append(line)
+                continue
+
+            if not in_multiline:
+                # 检查是否是新的配置项
+                if '=' in line:
+                    # 保存之前的配置
+                    if current_key is not None:
+                        os.environ[current_key] = '\n'.join(current_value).strip()
+
                     key, value = line.split('=', 1)
-                    os.environ[key] = value
+                    current_key = key.strip()
+                    current_value = [value]
+
+                    # 检查是否开始多行值（以 [ 或 { 开头，但未闭合）
+                    stripped_value = value.strip()
+                    if (stripped_value.startswith('[') and ']' not in stripped_value) or \
+                       (stripped_value.startswith('{') and '}' not in stripped_value):
+                        in_multiline = True
+                else:
+                    # 续行
+                    if current_key is not None:
+                        current_value.append(line)
+            else:
+                current_value.append(line)
+                # 检查多行是否结束
+                combined = '\n'.join(current_value)
+                if (combined.strip().startswith('[') and combined.strip().endswith(']')) or \
+                   (combined.strip().startswith('{') and combined.strip().endswith('}')):
+                    in_multiline = False
+
+        # 保存最后一个配置
+        if current_key is not None:
+            os.environ[current_key] = '\n'.join(current_value).strip()
+
+_load_env_file()
 
 
 @dataclass

@@ -2,6 +2,7 @@ from flask import Flask, redirect, render_template, request, session, flash, url
 from functools import wraps
 from qmt_trade import MyTradeAPIWrapper, dingbot
 from trade_routes import trade_bp, init_trade_routes
+from data_routes import data_bp
 from logger_config import setup_logging, get_logger
 from config import get_config
 from authentication import api_signature_required
@@ -39,6 +40,7 @@ for trader_config in config.get_enabled_traders():
 
 # 注册交易路由蓝图
 app.register_blueprint(trade_bp)
+app.register_blueprint(data_bp)
 
 # 初始化交易路由
 init_trade_routes(traders)
