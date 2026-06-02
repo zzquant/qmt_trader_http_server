@@ -18,7 +18,7 @@
 - 🌐 **HTTP API** - 将QMT交易能力封装为RESTful API，支持远程调用
 - 📈 **行情数据** - 历史K线、实时行情快照，支持自动下载缺失数据
 - 👥 **多账户** - 支持配置多个QMT交易账户，统一管理
-- 🔐 **安全认证** - HMAC-SHA256签名验证，防篡改防重放
+- 🔐 **安全认证** - HMAC-SHA256签名验证，支持URL参数鉴权（浏览器友好）
 - 📊 **Web界面** - 可视化交易界面，实时持仓和资产查看
 - 🔔 **钉钉通知** - 交易信号自动推送到钉钉群
 - 📝 **完整日志** - 所有交易操作记录在案
@@ -159,7 +159,7 @@ call_trade(
 
 | 接口 | 方法 | 描述 |
 |:---|:---|:---|
-| `/qmt/data/api/get_market_data_ex` | GET | 获取历史K线数据（自动下载缺失数据，日K实时更新） |
+| `/qmt/data/api/get_market_data_ex` | GET | 获取历史K线数据（自动下载缺失数据，日K实时更新，支持`json=1`返回JSON格式） |
 | `/qmt/data/api/get_full_tick` | GET | 获取实时行情快照（含五档盘口） |
 
 ### 外部接口
@@ -220,6 +220,16 @@ DINGTALK_SECRET=your_secret
 
 ## 🔐 API签名认证
 
+### 方式一：URL参数鉴权（浏览器友好）
+
+直接在URL中传递 `client_id` 和 `client_secret`，无需计算签名：
+
+```
+GET http://localhost:9091/qmt/data/api/get_market_data_ex?stock_list=510300&client_id=XXXX&client_secret=XXXX
+```
+
+### 方式二：HMAC签名鉴权（推荐用于程序调用）
+
 使用HMAC-SHA256签名保证API安全：
 
 ```
@@ -236,6 +246,34 @@ X-Signature: hmac_sha256_signature
 ```
 
 > 📖 详细签名说明见 [api_signature_example.md](api_signature_example.md)
+
+### API 调用示例
+
+所有接口都支持 URL 参数鉴权，格式：`?client_id=XXXX&client_secret=XXXX`
+
+**行情数据接口：**
+```bash
+# 获取历史K线数据（默认格式）
+http://127.0.0.1:9091/qmt/data/api/get_market_data_ex?stock_list=510300&period=1d&client_id=XXXX&client_secret=XXXX
+
+# 获取历史K线数据（JSON格式，多只股票）
+http://127.0.0.1:9091/qmt/data/api/get_market_data_ex?stock_list=510300,515050&period=1d&json=1&client_id=XXXX&client_secret=XXXX
+
+# 获取实时行情快照（含五档盘口）
+http://127.0.0.1:9091/qmt/data/api/get_full_tick?stock_list=510300,515050&client_id=XXXX&client_secret=XXXX
+```
+
+**账户与持仓接口：**
+```bash
+# 获取所有账户
+http://127.0.0.1:9091/qmt/trade/api/accounts?client_id=XXXX&client_secret=XXXX
+
+# 获取资产组合
+http://127.0.0.1:9091/qmt/trade/api/portfolio/0?client_id=XXXX&client_secret=XXXX
+
+# 获取持仓列表
+http://127.0.0.1:9091/qmt/trade/api/positions/0?client_id=XXXX&client_secret=XXXX
+```
 
 ---
 
@@ -300,6 +338,11 @@ MIT License - 仅供学习研究使用
   - `GET /qmt/data/api/get_full_tick` - 实时行情快照
     - 包含五档盘口数据
     - 自动添加 `timeFmt` 字段
+
+- 🔐 **URL参数鉴权**
+  - 支持通过URL参数传递 `client_id` 和 `client_secret`
+  - 浏览器直接访问，无需计算签名
+  - 示例：`?client_id=XXXX&client_secret=XXXX`
 
 ---
 
