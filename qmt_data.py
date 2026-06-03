@@ -79,6 +79,10 @@ def get_market_data_ex(stock_list, field_list=None, period='1d', start_time='', 
 
     log.info(f"get_market_data_ex: stocks={stock_list}, period={period}, start={start_time}, end={end_time}, dividend={dividend_type}")
 
+    # 先下载历史数据
+    for stock in stock_list:
+        xtdata.download_history_data(stock, period, start_time, end_time)
+
     result = xtdata.get_market_data_ex(
         field_list=field_list,
         stock_list=stock_list,
@@ -89,24 +93,6 @@ def get_market_data_ex(stock_list, field_list=None, period='1d', start_time='', 
         dividend_type=dividend_type,
         fill_data=fill_data
     )
-
-    # 自动下载缺失数据
-    empty_stocks = [stock for stock, df in result.items() if df is None or df.empty]
-    if empty_stocks:
-        log.info(f"自动下载缺失数据: {empty_stocks}")
-        for stock in empty_stocks:
-            xtdata.download_history_data(stock, period, start_time, end_time)
-        time.sleep(1)
-        result = xtdata.get_market_data_ex(
-            field_list=field_list,
-            stock_list=stock_list,
-            period=period,
-            start_time=start_time,
-            end_time=end_time,
-            count=count,
-            dividend_type=dividend_type,
-            fill_data=fill_data
-        )
 
     # 日K数据用实时行情更新最后一天
     if period == '1d':
